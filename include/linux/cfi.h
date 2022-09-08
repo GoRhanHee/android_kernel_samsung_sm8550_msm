@@ -15,7 +15,7 @@ enum bug_trap_type report_cfi_failure(struct pt_regs *regs, unsigned long addr,
 				      unsigned long *target, u32 type);
 
 static inline enum bug_trap_type report_cfi_failure_noaddr(struct pt_regs *regs,
-							   unsigned long addr)
+								   unsigned long addr)
 {
 	return report_cfi_failure(regs, addr, NULL, 0);
 }
