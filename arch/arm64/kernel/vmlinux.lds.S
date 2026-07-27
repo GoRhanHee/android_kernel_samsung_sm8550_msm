@@ -276,6 +276,10 @@ SECTIONS
 	_sdata = .;
 	RW_DATA(L1_CACHE_BYTES, PAGE_SIZE, THREAD_ALIGN)
 
+	.kunit_test_suites : {
+		KUNIT_TABLE()
+	}
+
 	HYPERVISOR_DATA_SECTION
 
 	/*

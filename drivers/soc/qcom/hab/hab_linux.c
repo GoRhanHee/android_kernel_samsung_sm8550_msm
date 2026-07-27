@@ -184,6 +184,7 @@ static long hab_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 	long ret = 0;
 	char names[30] = { 0 };
 
+
 	ret = hab_check_cmd(cmd, sizeof(data));
 	if (ret)
 		return ret;

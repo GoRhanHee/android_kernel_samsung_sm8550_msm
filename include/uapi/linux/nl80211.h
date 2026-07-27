@@ -1558,6 +1558,8 @@ enum nl80211_commands {
 	NL80211_CMD_RESERVED_DO_NOT_USE_9 = 156,
 	NL80211_CMD_RESERVED_DO_NOT_USE_10 = 157,
 
+	NL80211_CMD_TID_TO_LINK_MAP,
+
 	/* add new commands above here */
 
 	/* used to define NL80211_CMD_MAX below */
@@ -3333,6 +3335,9 @@ enum nl80211_attrs {
 	NL80211_ATTR_RESERVED_DO_NOT_USE_23 = 334,
 	NL80211_ATTR_RESERVED_DO_NOT_USE_24 = 335,
 	NL80211_ATTR_RESERVED_DO_NOT_USE_25 = 336,
+
+	NL80211_ATTR_MLO_TID_LINK_DEFAULT_MAP,
+	NL80211_ATTR_MLO_TID_LINK_MAP,
 
 	NL80211_ATTR_EHT_PUNCTURE_BITMAP = 350,
 	NL80211_ATTR_MLD_MAC,
@@ -6479,6 +6484,9 @@ enum nl80211_ext_feature_index {
 	NL80211_EXT_FEATURE_POWERED_ADDR_CHANGE,
 	NL80211_EXT_FEATURE_PUNCT,
 	NL80211_EXT_FEATURE_SECURE_NAN,
+	NL80211_EXT_FEATURE_AUTH_TX_RANDOM_TA,
+	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_2 = 63,
+	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_3 = 64,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_4 = 65,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_5 = 66,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_6 = 67,
@@ -7853,4 +7861,26 @@ enum nl80211_ap_settings_flags {
 	NL80211_AP_SETTINGS_SA_QUERY_OFFLOAD_SUPPORT	= 1 << 1,
 };
 
+/**
+ * enum nl80211_mlo_tid_link_map - MLO TID to link mapping.
+ *
+ * @NL80211_ATTR_MLO_TID_LINK_MAP_UPLINK:(u16) Uplink mapping bitmap of TID.
+ *	It is bitmask of link IDs in which a bit set would mean that the TID
+ *	is mapped with the link ID in uplink direction. Otherwise, the TID is
+ *	not mapped the link ID is not in uplink direction.
+ * @NL80211_ATTR_MLO_TID_LINK_MAP_DOWNLINK: (u16) Downlink mapping bitmap of
+ * 	TID. It is bitmask of link IDs in which a bit set would mean that the
+ *	TID is mapped with the link ID in downlink direction. Otherwise, the TID
+ *	is not mapped the link ID is not in downlink direction.
+ */
+enum nl80211_mlo_tid_link_map {
+	__NL80211_ATTR_MLO_TID_LINK_MAP_INVALID,
+	NL80211_ATTR_MLO_TID_LINK_MAP_UPLINK,
+	NL80211_ATTR_MLO_TID_LINK_MAP_DOWNLINK,
+
+	/* keep last */
+	__NL80211_ATTR_MLO_TID_LINK_MAP_AFTER_LAST,
+	NL80211_ATTR_MLO_TID_LINK_MAP_MAX =
+				 __NL80211_ATTR_MLO_TID_LINK_MAP_AFTER_LAST - 1
+};
 #endif /* __LINUX_NL80211_H */

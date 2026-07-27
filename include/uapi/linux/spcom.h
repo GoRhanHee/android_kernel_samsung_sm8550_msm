@@ -29,7 +29,7 @@
  * Maximum number of channel between Secure Processor and HLOS.
  * including predefined channels, like "sp_kernel".
  */
-#define SPCOM_MAX_CHANNELS	0x20
+#define SPCOM_MAX_CHANNELS	0x10
 
 /* Maximum size (including null) for channel names */
 #define SPCOM_CHANNEL_NAME_SIZE	32
