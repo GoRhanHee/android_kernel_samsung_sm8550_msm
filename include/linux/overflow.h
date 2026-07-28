@@ -146,7 +146,25 @@ static inline size_t __must_check size_mul(size_t factor1, size_t factor2)
 	return bytes;
 }
 
+/**
+ * size_add() - Calculate size_t addition with saturation at SIZE_MAX
+ *
+ * @addend1: first addend
+ * @addend2: second addend
+ *
+ * Returns: calculate @addend1 + @addend2, both promoted to size_t,
+ * with any overflow causing the return value to be SIZE_MAX. The
+ * lvalue must be size_t to avoid implicit type conversion.
+ */
+static inline size_t __must_check size_add(size_t addend1, size_t addend2)
+{
+	size_t bytes;
 
+	if (check_add_overflow(addend1, addend2, &bytes))
+		return SIZE_MAX;
+
+	return bytes;
+}
 
 /**
  * size_sub() - Calculate size_t subtraction with saturation at SIZE_MAX
