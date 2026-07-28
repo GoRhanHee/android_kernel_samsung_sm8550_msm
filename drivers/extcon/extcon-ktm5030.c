@@ -21,6 +21,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/usb/usbpd.h>
 #include <linux/bitfield.h>
+#include <linux/slab.h>
 
 #define I2C_TRAN_SIZE		32
 #define DATA_PAGE_SIZE		4096
@@ -402,7 +403,7 @@ static bool ktm5030_write_image(const struct firmware *fw,
 			struct ktm5030 *pdata, bool show)
 {
 	bool ret = true;
-	u8 databuf[DATA_BUF_MAX_SIZE];
+	u8 *databuf;
 	const u8 *fdata = fw->data;
 	int dlen = (int)fw->size;
 	int start_addr = 0, wlen = 0, *ptr, crc16;
@@ -410,6 +411,10 @@ static bool ktm5030_write_image(const struct firmware *fw,
 
 	if ((pdata->fw_status != UPDATE_DRIVERWRITE) &&
 		(pdata->fw_status != UPDATE_ERASEBANK))
+		return false;
+
+	databuf = kmalloc(DATA_BUF_MAX_SIZE, GFP_KERNEL);
+	if (!databuf)
 		return false;
 
 	total_page = dlen / DATA_PAGE_SIZE;
@@ -498,6 +503,7 @@ static bool ktm5030_write_image(const struct firmware *fw,
 			pdata->fw_status = UPDATE_COREIMG;
 	}
 
+	kfree(databuf);
 	return ret;
 }
 

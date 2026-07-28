@@ -26,8 +26,6 @@
 #include <trace/hooks/cpufreq.h>
 
 #define MAX_BUF_SIZE	1024
-#define MIN(a, b)     (((a) < (b)) ? (a) : (b))
-#define MAX(a, b)     (((a) > (b)) ? (a) : (b))
 
 /* adaptive boost from walt */
 extern int cpufreq_walt_set_adaptive_freq(unsigned int cpu, unsigned int adaptive_low_freq,
