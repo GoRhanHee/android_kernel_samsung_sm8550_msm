@@ -6018,7 +6018,7 @@ static int sec_bat_set_property(struct power_supply *psy,
 			pr_info("%s: POWER_SUPPLY_EXT_PROP_ABNORMAL_TA(%d)\n", __func__, val->intval);
 			sec_bat_set_abnormal_ta_fcc(battery, true);
 			break;
-#if !defined(CONFIG_DUAL_BATTERY)
+#if !IS_ENABLED(CONFIG_DUAL_BATTERY)
 		case POWER_SUPPLY_EXT_PROP_POR_REINIT_COUNT:
 			battery->cisd.event_data[EVENT_POR_REINIT]++;
 			pr_info("%s: POR_REINIT_COUNT (%d)\n",

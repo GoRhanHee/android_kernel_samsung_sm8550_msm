@@ -2173,12 +2173,16 @@ static int reinit_status(struct max77705_fuelgauge_data *fuelgauge) {
 				return -1;
 			}
 			else {
+#if !IS_ENABLED(CONFIG_DUAL_BATTERY)
 				union power_supply_propval value;
 
 				value.intval = 1;
+#endif
 				pr_info("%s: FG Initialization Success!!\n", __func__);
+#if !IS_ENABLED(CONFIG_DUAL_BATTERY)
 				psy_do_property("battery", set,
 					POWER_SUPPLY_EXT_PROP_POR_REINIT_COUNT, value);
+#endif
 				return 0;
 			}
 		} else {
@@ -3745,4 +3749,3 @@ module_exit(max77705_fuelgauge_exit);
 MODULE_DESCRIPTION("Samsung max77705 Fuel Gauge Driver");
 MODULE_AUTHOR("Samsung Electronics");
 MODULE_LICENSE("GPL");
-

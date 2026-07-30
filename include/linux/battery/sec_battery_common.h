@@ -300,7 +300,6 @@ enum power_supply_ext_property {
  * number moves.
  */
 #define POWER_SUPPLY_EXT_PROP_TX_PWR_BUDG POWER_SUPPLY_EXT_PROP_MAX
-#define POWER_SUPPLY_EXT_PROP_POR_REINIT_COUNT POWER_SUPPLY_EXT_PROP_MAX
 #endif
 
 enum {
