@@ -119,3 +119,87 @@ config SENSORS_GRIP_SCANOFF
 	help
 	  Scan off for low current consumption of the unused grip sensor.
 	  This option is for DM USA&CAN models, user binary.
+
+config SENSORS_A96T396
+	tristate "A96T396 driver for grip"
+	default n
+	depends on I2C && SEC_Q5Q_PROJECT
+	help
+	  Say Y here if you use A96T396 for grip.
+
+config SENSORS_A96T396_SUB
+	tristate "A96T396 sub driver for grip"
+	default n
+	depends on I2C && SEC_Q5Q_PROJECT
+	help
+	  Say Y here if you use A96T396 for the sub grip sensor.
+
+config SENSORS_A96T396_SUB2
+	tristate "A96T396 second sub driver for grip"
+	default n
+	depends on I2C && SEC_Q5Q_PROJECT
+	help
+	  Say Y here if you use a second A96T396 sub grip sensor.
+
+config SENSORS_A96T396_WIFI
+	tristate "A96T396 Wi-Fi driver for grip"
+	default n
+	depends on I2C && SEC_Q5Q_PROJECT
+	help
+	  Say Y here if you use A96T396 for the Wi-Fi grip sensor.
+
+config SENSORS_A96T396_LDO_SHARE
+	tristate "A96T396 shared LDO"
+	default n
+	depends on I2C && SEC_Q5Q_PROJECT
+	help
+	  Say Y here if the A96T396 sensors share an LDO.
+
+config SENSORS_A96T396_CRC_CHECK
+	bool "Use CRC instead of checksum comparison"
+	default n
+	depends on SEC_Q5Q_PROJECT
+	help
+	  Say Y here to validate A96T396 firmware with CRC.
+
+config SENSORS_A96T396_BENZ2
+	tristate "Benz2 A96T396 firmware"
+	default n
+	depends on I2C && SEC_Q5Q_PROJECT
+	help
+	  Say Y here if you use the Benz2 grip firmware.
+
+config SENSORS_FW_VENDOR
+	tristate "Grip sensor firmware in vendor"
+	default n
+	depends on I2C && SEC_Q5Q_PROJECT
+	help
+	  Say Y here if grip sensor firmware is stored in vendor.
+
+config SENSORS_A96T396_2CH
+	tristate "A96T396 two-channel grip sensor"
+	default n
+	depends on I2C && SEC_Q5Q_PROJECT
+	help
+	  Say Y here if the main A96T396 grip sensor uses two channels.
+
+config SENSORS_A96T396_SUB_2CH
+	tristate "A96T396 sub two-channel grip sensor"
+	default n
+	depends on I2C && SEC_Q5Q_PROJECT
+	help
+	  Say Y here if the sub A96T396 grip sensor uses two channels.
+
+config SENSORS_LOW_TEMP_COMP
+	bool "Grip condition for low temperature"
+	default n
+	depends on SEC_Q5Q_PROJECT
+	help
+	  Say Y here if you need low-temperature compensation.
+
+config SENSORS_SUPPORT_LOGIC_PARAMETER
+	bool "Support grip logic firmware"
+	default n
+	depends on SEC_Q5Q_PROJECT
+	help
+	  Say Y here if the model supports logic firmware.

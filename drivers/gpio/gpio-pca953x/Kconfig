@@ -1,0 +1,13 @@
+#
+# PCA953X configurations
+#
+
+comment "PCA953X configs"
+
+config GPIO_PCA953X_RESET
+	bool "Using GPIO-PCA953X Reset"
+	default n
+	depends on GPIO_PCA953X && SEC_Q5Q_PROJECT
+	help
+	  If you say yes here you will get support for
+	  reset pin control of PCA953X.

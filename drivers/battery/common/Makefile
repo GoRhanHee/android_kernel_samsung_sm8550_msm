@@ -17,6 +17,9 @@ sec-battery-$(CONFIG_BATTERY_LOGGING)	+= battery_logger.o sb_batt_dump.o
 
 obj-$(CONFIG_UPDATE_BATTERY_DATA)	+= sec_battery_data.o
 
+obj-$(CONFIG_DUAL_BATTERY)		+= sec-dual-battery.o
+sec-dual-battery-$(CONFIG_DUAL_BATTERY)	+= sec_dual_battery.o
+
 ifeq ($(CONFIG_SEC_KUNIT), y)
  GCOV_PROFILE_sec_battery.o := $(CONFIG_SEC_KUNIT)
  GCOV_PROFILE_sec_battery_wc.o := $(CONFIG_SEC_KUNIT)
@@ -30,6 +33,7 @@ ifeq ($(CONFIG_SEC_KUNIT), y)
  GCOV_PROFILE_sec_battery_dt.o := $(CONFIG_SEC_KUNIT)
  GCOV_PROFILE_sec_battery_misc.o := $(CONFIG_SEC_KUNIT)
  GCOV_PROFILE_sec_pd.o := $(CONFIG_SEC_KUNIT)
+ GCOV_PROFILE_sec_dual_battery.o := $(CONFIG_SEC_KUNIT)
 ifeq ($(CONFIG_UML), y)
 endif
 endif

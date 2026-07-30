@@ -123,6 +123,9 @@ enum sec_battery_voltage_type {
 enum sec_battery_dual_mode {
 	SEC_DUAL_BATTERY_MAIN = 0,
 	SEC_DUAL_BATTERY_SUB,
+#if IS_ENABLED(CONFIG_SEC_Q5Q_PROJECT)
+	SEC_DUAL_BATTERY_TOTAL,
+#endif
 };
 #endif
 
@@ -397,6 +400,16 @@ enum {
 	RX_POWER_12W,
 	RX_POWER_15W,
 };
+
+#if IS_ENABLED(CONFIG_SEC_Q5Q_PROJECT)
+enum mfc_phm_state {
+	NONE_PHM = 0,
+	EXIT_PHM,
+	ENTER_PHM,
+	FAILED_PHM,
+	END_PHM,
+};
+#endif
 
 /* full check condition type (can be used overlapped) */
 #define sec_battery_full_condition_t unsigned int

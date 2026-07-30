@@ -353,4 +353,10 @@ config BATTERY_SAMSUNG_REBOOT
 	 This options for only ARCH_EXYNOS.
 	 If this is Y, checking reboot when power off.
 
+config DUAL_BATTERY
+	tristate "support for dual battery model"
+	depends on SEC_Q5Q_PROJECT
+	help
+	  Say Y here to enable support for dual battery.
+
 endmenu
