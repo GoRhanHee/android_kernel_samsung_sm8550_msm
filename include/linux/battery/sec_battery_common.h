@@ -295,10 +295,12 @@ enum power_supply_ext_property {
 
 #if IS_ENABLED(CONFIG_SEC_Q5Q_PROJECT)
 /*
- * The retained CPS4038 implementation uses this dm3-only extension.  Alias it
- * to the Fold5 sentinel so the Fold5 property numbering remains unchanged.
+ * Retained shared drivers use these dm3-only extensions in disjoint power
+ * supply callbacks.  Alias them to the Fold5 sentinel so no Fold5 property
+ * number moves.
  */
 #define POWER_SUPPLY_EXT_PROP_TX_PWR_BUDG POWER_SUPPLY_EXT_PROP_MAX
+#define POWER_SUPPLY_EXT_PROP_POR_REINIT_COUNT POWER_SUPPLY_EXT_PROP_MAX
 #endif
 
 enum {
