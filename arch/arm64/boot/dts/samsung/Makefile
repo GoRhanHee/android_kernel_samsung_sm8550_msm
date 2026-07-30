@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0
 
-dts-dirs += diamond/dm3q
-dts-dirs += foldable/q5q
+dts-dirs-$(CONFIG_SEC_DM3Q_PROJECT) += diamond/dm3q
+dts-dirs-$(CONFIG_SEC_Q5Q_PROJECT) += foldable/q5q
 
 always          := $(dtb-y)
-subdir-y        := $(dts-dirs)
+subdir-y        := $(dts-dirs-y)
 
 clean-files := *.dtb *.reverse.dts *.dtbo

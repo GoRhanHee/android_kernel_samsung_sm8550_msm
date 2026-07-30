@@ -232,6 +232,19 @@ config ARCH_KALAMA
 	  KALAMA chipset. If you do not wish to build a kernel that
 	  runs on this chipset or if you are unsure, say 'N' here.
 
+choice
+	prompt "Samsung Kalama project"
+	depends on ARCH_KALAMA
+	optional
+
+config SEC_DM3Q_PROJECT
+	bool "Samsung Galaxy S23 Ultra (dm3q)"
+
+config SEC_Q5Q_PROJECT
+	bool "Samsung Galaxy Z Fold5 (q5q)"
+
+endchoice
+
 config ARCH_KAKA
 	bool "Enable Support for Qualcomm Technologies, Inc. KAKA"
 	depends on ARCH_QCOM
