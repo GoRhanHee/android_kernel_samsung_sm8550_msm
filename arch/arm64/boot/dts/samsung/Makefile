@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 
 dts-dirs += diamond/dm3q
+dts-dirs += foldable/q5q
 
 always          := $(dtb-y)
 subdir-y        := $(dts-dirs)
