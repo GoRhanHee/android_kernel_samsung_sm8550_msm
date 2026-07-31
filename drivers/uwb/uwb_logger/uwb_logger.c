@@ -168,3 +168,5 @@ int uwb_logger_init(void)
 
 	return 0;
 }
+
+MODULE_LICENSE("GPL");
