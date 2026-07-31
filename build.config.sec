@@ -6,7 +6,7 @@ apply_defconfig_fragment ${KERNEL_DIR}/arch/${ARCH}/configs/vendor/${MSM_ARCH}_s
 
 # Samsung project
 case "${SEC_PROJECT_CONFIG:-}" in
-	dm3q|q5q)
+	dm1q|dm2q|dm3q|q5q)
 		apply_defconfig_fragment \
 			${KERNEL_DIR}/arch/${ARCH}/configs/vendor/${SEC_PROJECT_CONFIG}_project.config \
 			vendor/${MSM_ARCH}-gki_defconfig

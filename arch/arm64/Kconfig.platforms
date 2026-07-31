@@ -237,6 +237,12 @@ choice
 	depends on ARCH_KALAMA
 	optional
 
+config SEC_DM1Q_PROJECT
+	bool "Samsung Galaxy S23 (dm1q)"
+
+config SEC_DM2Q_PROJECT
+	bool "Samsung Galaxy S23+ (dm2q)"
+
 config SEC_DM3Q_PROJECT
 	bool "Samsung Galaxy S23 Ultra (dm3q)"
 
