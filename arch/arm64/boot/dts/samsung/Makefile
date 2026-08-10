@@ -4,6 +4,7 @@ dts-dirs-$(CONFIG_SEC_DM1Q_PROJECT) += diamond/dm1q
 dts-dirs-$(CONFIG_SEC_DM2Q_PROJECT) += diamond/dm2q
 dts-dirs-$(CONFIG_SEC_DM3Q_PROJECT) += diamond/dm3q
 dts-dirs-$(CONFIG_SEC_Q5Q_PROJECT) += foldable/q5q
+dts-dirs-$(CONFIG_SEC_B5Q_PROJECT) += foldable/b5q
 
 always          := $(dtb-y)
 subdir-y        := $(dts-dirs-y)

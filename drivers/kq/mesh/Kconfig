@@ -1,7 +1,7 @@
 config SEC_KQ_MESH_QC
 	tristate "Samsung KQ MESH support for QC models"
 	default n
-	depends on SEC_Q5Q_PROJECT
+	depends on SEC_Q5Q_PROJECT || SEC_B5Q_PROJECT
 	help
 	  This option enables Samsung KQ MESH features for QC models.
 	  This module created to enhance system stability.

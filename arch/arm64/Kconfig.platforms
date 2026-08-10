@@ -249,6 +249,9 @@ config SEC_DM3Q_PROJECT
 config SEC_Q5Q_PROJECT
 	bool "Samsung Galaxy Z Fold5 (q5q)"
 
+config SEC_B5Q_PROJECT
+	bool "Samsung Galaxy Z Flip5 (b5q)"
+
 endchoice
 
 config ARCH_KAKA

@@ -203,3 +203,31 @@ config SENSORS_SUPPORT_LOGIC_PARAMETER
 	depends on SEC_Q5Q_PROJECT
 	help
 	  Say Y here if the model supports logic firmware.
+
+config SENSORS_SX9360
+	tristate "SX9360 driver"
+	default n
+	depends on I2C && SEC_B5Q_PROJECT
+	help
+	  Say Y here if you use sx9360.
+
+config SENSORS_SX9360_SUB
+	tristate "SX9360 sub driver"
+	default n
+	depends on I2C && SEC_B5Q_PROJECT
+	help
+	  Say Y here if you use sx9360 sub.
+
+config SENSORS_SX9364
+	tristate "SX9364 driver"
+	default n
+	depends on I2C && SEC_B5Q_PROJECT
+	help
+	  Say Y here if you use sx9364.
+
+config SENSORS_SX9364_SUB
+	tristate "SX9364 sub driver"
+	default n
+	depends on I2C && SEC_B5Q_PROJECT
+	help
+	  Say Y here if you use sx9364 sub.

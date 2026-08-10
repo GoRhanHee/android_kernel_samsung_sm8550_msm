@@ -4,7 +4,7 @@
 
 config SEC_PANEL_NOTIFIER_V2
 	tristate "samsung panel notifier"
-	depends on SEC_Q5Q_PROJECT
+	depends on SEC_Q5Q_PROJECT || SEC_B5Q_PROJECT
 	help
 	  Samsung panel notifier.
 

@@ -26,7 +26,7 @@ config INPUT_SEC_SECURE_TOUCH
 
 config INPUT_SEC_TRUSTED_TOUCH
 	tristate "input sec trusted touch"
-	depends on INPUT && SEC_Q5Q_PROJECT
+	depends on INPUT && (SEC_Q5Q_PROJECT || SEC_B5Q_PROJECT)
 	help
 	  Say Y here if you need to use sec trusted touch.
 
@@ -42,7 +42,7 @@ config INPUT_SEC_NOTIFIER
 
 config SEC_INPUT_MULTI_DEVICE
 	tristate "multi device for foldable"
-	depends on SEC_Q5Q_PROJECT
+	depends on SEC_Q5Q_PROJECT || SEC_B5Q_PROJECT
 	help
 	  Say Y here if you need to use multiple touch devices.
 
@@ -59,6 +59,6 @@ config SEC_INPUT_CMD_TEST
 
 config SEC_INPUT_RAWDATA
 	tristate "input rawdata"
-	depends on SEC_Q5Q_PROJECT
+	depends on SEC_Q5Q_PROJECT || SEC_B5Q_PROJECT
 	help
 	  Say Y here if you need to use rawdata.

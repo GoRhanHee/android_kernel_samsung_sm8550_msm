@@ -5,3 +5,31 @@ config SENSORS
 	help
 	  This option enables the sensor sysfs class in /sys/class/sensors.
 	  You'll need this to do anything useful with sensors. If unsure, say N.
+
+config SENSORS_SX9380
+	tristate "SX9380 driver"
+	default n
+	depends on I2C && SEC_B5Q_PROJECT
+	help
+	  Say Y here if you use sx9380.
+
+config SENSORS_SX9380_SUB
+	tristate "SX9380 sub driver"
+	default n
+	depends on I2C && SEC_B5Q_PROJECT
+	help
+	  Say Y here if you use sx9380 sub.
+
+config SENSORS_SX9380_SUB2
+	tristate "SX9380 sub2 driver"
+	default n
+	depends on I2C && SEC_B5Q_PROJECT
+	help
+	  Say Y here if you use sx9380 sub2.
+
+config SENSORS_COMMON_VDD_SUB
+	bool "SX9380 common VDD"
+	default n
+	depends on SEC_B5Q_PROJECT
+	help
+	  Say Y here if main and sub sx9380 use common VDD.

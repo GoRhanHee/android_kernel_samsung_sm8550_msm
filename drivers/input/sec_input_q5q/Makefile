@@ -42,3 +42,4 @@ GCOV_PROFILE_sec_tsp_dumpkey.o := $(CONFIG_SEC_KUNIT)
 
 subdir-ccflags-$(CONFIG_SEC_KUNIT) += \
 	-Wno-format-zero-length
+obj-$(CONFIG_SEC_B5Q_PROJECT) += synaptics/

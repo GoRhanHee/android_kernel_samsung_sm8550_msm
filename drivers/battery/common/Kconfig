@@ -355,7 +355,7 @@ config BATTERY_SAMSUNG_REBOOT
 
 config DUAL_BATTERY
 	tristate "support for dual battery model"
-	depends on SEC_Q5Q_PROJECT
+	depends on SEC_Q5Q_PROJECT || SEC_B5Q_PROJECT
 	help
 	  Say Y here to enable support for dual battery.
 

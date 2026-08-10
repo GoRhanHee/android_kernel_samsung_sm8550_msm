@@ -1,6 +1,6 @@
 config INPUT_DIGITAL_HALL_AKM
 	tristate "Enable AKM DIGITAL HALL IC"
-	depends on I2C && SEC_Q5Q_PROJECT
+	depends on I2C && (SEC_Q5Q_PROJECT || SEC_B5Q_PROJECT)
 	help
 	  Say Y to enable support of akm digital hall ic.
 

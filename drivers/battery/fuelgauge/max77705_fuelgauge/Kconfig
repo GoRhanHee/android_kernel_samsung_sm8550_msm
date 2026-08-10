@@ -49,7 +49,7 @@ config FUELGAUGE_MAX77705_TEST
 config UI_SOC_PROLONGING
 	bool "UI SOC 100% prolonging"
 	default n
-	depends on SEC_Q5Q_PROJECT
+	depends on SEC_Q5Q_PROJECT || SEC_B5Q_PROJECT
 	help
 	  Say Y here to enable UI SOC prolonging.
 
