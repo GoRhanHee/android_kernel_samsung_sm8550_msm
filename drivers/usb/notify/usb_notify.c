@@ -1706,7 +1706,7 @@ int usb_check_whitelist_for_mdm(struct usb_device *dev)
 }
 EXPORT_SYMBOL(usb_check_whitelist_for_mdm);
 
-static bool usb_match_any_interface_for_id(struct usb_device *udev,
+static bool __maybe_unused usb_match_any_interface_for_id(struct usb_device *udev,
 				    int *whitelist_array)
 {
 	int i = 0;
