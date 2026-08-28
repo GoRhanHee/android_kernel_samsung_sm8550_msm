@@ -14,7 +14,7 @@
  *
  * This program can be compiled and run on an Android device as follows:
  *
- *	NDK_DIR=$HOME/android-ndk-r23b  # adjust directory path as needed
+ *	NDK_DIR=$HOME/android-ndk-r26d  # adjust directory path as needed
  *	$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android31-clang \
  *		fips140_lab_util.c -O2 -Wall -o fips140_lab_util
  *	adb push fips140_lab_util /data/local/tmp/
