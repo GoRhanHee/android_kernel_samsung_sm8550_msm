@@ -23,7 +23,7 @@
 #define KASAN_ABI_VERSION 5
 
 /*
- * Clang 22 added preprocessor macros to match GCC, in hopes of eventually
+ * Recent Clang versions added preprocessor macros to match GCC, in hopes of eventually
  * dropping __has_feature support for sanitizers:
  * https://github.com/llvm/llvm-project/commit/568c23bbd3303518c5056d7f03444dae4fdc8a9c
  * Create these macros for older versions of clang so that it is easy to clean
