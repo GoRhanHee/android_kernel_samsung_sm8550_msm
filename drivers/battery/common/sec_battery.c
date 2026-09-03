@@ -8255,7 +8255,7 @@ static void sec_batt_dev_init_work(struct work_struct *work)
 	sec_bat_set_health(battery, POWER_SUPPLY_HEALTH_GOOD);
 	battery->capacity = 50;
 
-	sec_chg_check_modprobe();
+	sec_chg_check_modprobe(sec_bat_get_lpmode());
 
 	/* updates temperatures on boot */
 	sec_bat_get_temperature_info(battery);

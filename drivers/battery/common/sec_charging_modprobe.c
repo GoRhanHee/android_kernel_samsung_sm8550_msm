@@ -32,23 +32,25 @@ int sec_chg_set_dev_init(unsigned int dev)
 }
 EXPORT_SYMBOL(sec_chg_set_dev_init);
 
-void sec_chg_check_modprobe(void)
+void sec_chg_check_modprobe(unsigned int lpmode)
 {
-	unsigned int check_dev = 0;
+	unsigned int check_dev = SC_DEV_FG | SC_DEV_MAIN_CHG;
 
-	check_dev |= SC_DEV_FG | SC_DEV_MAIN_CHG;
 #if IS_ENABLED(CONFIG_DIRECT_CHARGING)
 	check_dev |= SC_DEV_DIR_CHG | SC_DEV_SEC_DIR_CHG;
 #endif
 #if IS_ENABLED(CONFIG_WIRELESS_CHARGING)
-	check_dev |= SC_DEV_WRL_CHG;
+	if (!lpmode) {
+		check_dev |= SC_DEV_WRL_CHG;
 #if IS_ENABLED(CONFIG_SB_MFC)
-	check_dev |= SC_DEV_SB_MFC;
+		check_dev |= SC_DEV_SB_MFC;
 #endif
+	}
 #endif
 
 	if (!wait_event_timeout(gdev_init.dev_wait,
-		gdev_init.dev == check_dev, msecs_to_jiffies(MODPROB_TIMEOUT)))
+		(gdev_init.dev & check_dev) == check_dev,
+		msecs_to_jiffies(MODPROB_TIMEOUT)))
 		pr_info("%s: dev_init timeout(0x%x)\n", __func__, gdev_init.dev);
 	else
 		pr_info("%s: takes time to wait(0x%x)\n", __func__, gdev_init.dev);
@@ -67,6 +69,6 @@ EXPORT_SYMBOL(sec_chg_check_dev_modprobe);
 #else
 void sec_chg_init_gdev(void) { }
 int sec_chg_set_dev_init(unsigned int dev) { return 0; }
-void sec_chg_check_modprobe(void) { }
+void sec_chg_check_modprobe(unsigned int lpmode) { }
 void sec_chg_check_dev_modprobe(unsigned int dev) { }
 #endif

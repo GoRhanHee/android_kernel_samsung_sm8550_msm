@@ -38,7 +38,7 @@ struct dev_init_info {
 };
 
 extern int sec_chg_set_dev_init(unsigned int dev);
-extern void sec_chg_check_modprobe(void);
+extern void sec_chg_check_modprobe(unsigned int lpmode);
 extern void sec_chg_check_dev_modprobe(unsigned int dev);
 extern void sec_chg_init_gdev(void);
 
