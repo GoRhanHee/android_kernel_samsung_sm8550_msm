@@ -254,6 +254,14 @@ config SEC_B5Q_PROJECT
 
 endchoice
 
+config SEC_DM3Q_EUR_OPENX_PROJECT
+	bool "Samsung Galaxy S23 Ultra (dm3q EUR/OpenX)"
+	depends on SEC_DM3Q_PROJECT
+	help
+	  Use the overseas S918BXXSAFZG1 dm3q OpenX device-tree set.
+	  This keeps the overseas DTS separate from the Korean dm3q
+	  singlex device-tree set.
+
 config ARCH_KAKA
 	bool "Enable Support for Qualcomm Technologies, Inc. KAKA"
 	depends on ARCH_QCOM
