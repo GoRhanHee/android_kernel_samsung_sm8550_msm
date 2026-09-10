@@ -1160,7 +1160,7 @@ static ssize_t usb_sl_show(struct device *dev,
              __func__, state, udev->secure_lock);
 #endif
 
-    return snprintf(buf, PAGE_SIZE, "%s\n", state);
+	return sysfs_emit(buf, "%lu\n", udev->secure_lock);
 }
 
 static ssize_t usb_sl_store(
