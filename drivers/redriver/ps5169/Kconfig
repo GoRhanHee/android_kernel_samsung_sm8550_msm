@@ -6,7 +6,7 @@ comment "Redriver IC driver configs"
 
 config COMBO_REDRIVER_PS5169
 	tristate "ps5169 support"
-	depends on I2C && SEC_B5Q_PROJECT
+	depends on I2C && (SEC_B5Q_PROJECT || SEC_UNIVERSAL_PROJECT)
 	default n
 	help
 	  If you say yes here you will get support for

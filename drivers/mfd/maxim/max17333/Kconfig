@@ -1,6 +1,6 @@
 config MFD_MAX17333
 	tristate "Maxim Integrated MAX17333 PMIC Support"
-	depends on I2C=y && SEC_Q5Q_PROJECT
+	depends on I2C=y && (SEC_Q5Q_PROJECT || SEC_UNIVERSAL_PROJECT)
 	select MFD_CORE
 	select REGMAP_I2C
 	select REGMAP_IRQ

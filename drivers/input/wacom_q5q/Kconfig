@@ -4,7 +4,7 @@
 
 config INPUT_WACOM
 	tristate "Wacom penabled i2c touchscreen"
-	depends on I2C && SEC_Q5Q_PROJECT
+	depends on I2C && (SEC_Q5Q_PROJECT || SEC_UNIVERSAL_PROJECT)
 	help
 	  Say Y here if you have an Wacom penabled i2c touchscreen
 	  connected to your system.

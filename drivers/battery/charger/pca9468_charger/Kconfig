@@ -1,7 +1,7 @@
 config CHARGER_PCA9468
 	tristate "PCA9468 charger driver"
 	default n
-	depends on DIRECT_CHARGING && SEC_Q5Q_PROJECT
+	depends on DIRECT_CHARGING && (SEC_Q5Q_PROJECT || SEC_UNIVERSAL_PROJECT)
 	help
 	  Say Y or M here,
 	  to enable support for the PCA9468 charger.

@@ -1,7 +1,7 @@
 config MAX77705_VIBRATOR
 	tristate "Maxim MAX77705 vibrator"
 	default n
-	depends on MFD_MAX77705 && SEC_B5Q_PROJECT
+	depends on MFD_MAX77705 && (SEC_B5Q_PROJECT || SEC_UNIVERSAL_PROJECT)
 	help
 	  If you say yes here you will get support for the
 	  motor of Maxim MAX77705 PMIC.
@@ -11,9 +11,8 @@ config MAX77705_VIBRATOR
 config MAX77705_VIB_FOLD_MODEL
 	tristate "get support for folder status "
 	default n
-	depends on SEC_B5Q_PROJECT
+	depends on SEC_B5Q_PROJECT || SEC_UNIVERSAL_PROJECT
 	help
 	  If you enable this feature,
 	  you will get event for folder status
 	  through event_cmd sysfs
-

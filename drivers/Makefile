@@ -195,7 +195,7 @@ obj-y				+= switch/
 obj-$(CONFIG_UH)		+= uh/
 obj-y += regulator/pmic_class/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += vibrator/common/vib_info/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
-ifeq ($(CONFIG_SEC_B5Q_PROJECT),y)
+ifneq ($(filter y,$(CONFIG_SEC_B5Q_PROJECT) $(CONFIG_SEC_UNIVERSAL_PROJECT)),)
 obj-y += vibrator/common/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 endif
 obj-y += misc/drb/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
@@ -211,7 +211,13 @@ obj-y += vibrator/common/inputff/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += muic/common/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += kperfmon/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += usb/typec/manager/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
-ifeq ($(CONFIG_SEC_Q5Q_PROJECT),y)
+ifeq ($(CONFIG_SEC_UNIVERSAL_PROJECT),y)
+obj-y += input/sec_input/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+obj-y += input/sec_input_q5q/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+obj-y += input/sec_input_q5q/stm_fst3ca60y_i2c/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+obj-y += input/sec_input_q5q/stm_fst2ba61y_i2c/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+obj-y += input/sec_input_q5q/stm_fst2ca78y_spi/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+else ifeq ($(CONFIG_SEC_Q5Q_PROJECT),y)
 obj-y += input/sec_input_q5q/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += input/sec_input_q5q/stm_fst3ca60y_i2c/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += input/sec_input_q5q/stm_fst2ba61y_i2c/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
@@ -228,7 +234,7 @@ obj-y += usb/typec/common/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += sti/abc/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += battery/charger/pca9481_charger/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += battery/charger/pca9468_charger/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
-ifeq ($(CONFIG_SEC_B5Q_PROJECT),y)
+ifneq ($(filter y,$(CONFIG_SEC_B5Q_PROJECT) $(CONFIG_SEC_UNIVERSAL_PROJECT)),)
 obj-y += battery/charger/pca9482_charger/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 endif
 obj-y += vibrator/cs/cs40l26/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
@@ -252,13 +258,13 @@ obj-y += hwmon/sec_thermistor/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += battery/wireless/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += sensors_lego/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += sensors/vl53l8/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
-ifeq ($(CONFIG_SEC_B5Q_PROJECT),y)
+ifneq ($(filter y,$(CONFIG_SEC_B5Q_PROJECT) $(CONFIG_SEC_UNIVERSAL_PROJECT)),)
 obj-y += battery/limiter/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 endif
 obj-y += input/sec_input/stm_spi/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += battery/limiter/max17333_limiter/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += mfd/slsi/s2mpb02/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
-ifeq ($(CONFIG_SEC_B5Q_PROJECT),y)
+ifneq ($(filter y,$(CONFIG_SEC_B5Q_PROJECT) $(CONFIG_SEC_UNIVERSAL_PROJECT)),)
 obj-y += pwm/pwm-gpclk/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += redriver/ps5169/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += vibrator/maxim/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT

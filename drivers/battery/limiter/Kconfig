@@ -1,6 +1,6 @@
 config LIMITER_S2ASL01
 	tristate "S2ASL01 limiter support"
-	depends on I2C && SEC_B5Q_PROJECT
+	depends on I2C && (SEC_B5Q_PROJECT || SEC_UNIVERSAL_PROJECT)
 	help
 	  Say Y here to enable support for the S2ASL01 limiter support.
 	  S2ASL01 is a limiter IC.

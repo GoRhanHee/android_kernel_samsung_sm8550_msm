@@ -56,6 +56,62 @@ function install_dtbs() {
   rm -rf "${INSTALL_DTBS_PATH}"
   (cd ${KERNEL_DIR} && make "${TOOL_ARGS[@]}" O=${OUT_DIR} "${MAKE_ARGS[@]}" INSTALL_DTBS_PATH="${INSTALL_DTBS_PATH}" DTB_TYPES="${dtb_types}" dtbs_install)
   cp $(find ${INSTALL_DTBS_PATH} -type f \( -name "*.dtb" -o -name "*.dtbo" \)) ${DIST_DIR}
+
+  if [ "${SEC_PROJECT_CONFIG:-}" = "universal" ]; then
+    stage_universal_device_trees "${INSTALL_DTBS_PATH}"
+  fi
+}
+
+function universal_dt_profile() {
+  local name="$1"
+
+  name="${name%.dtb}"
+  name="${name%.dtbo}"
+  name="${name#kalamap-v2-}"
+  name="${name#kalama-v2-}"
+  name="${name#kalamap-}"
+  name="${name#kalama-}"
+  case "${name}" in
+    *_w00_r*) printf '%s\n' "${name%%_w00_r*}" ;;
+    *) return 1 ;;
+  esac
+}
+
+function stage_universal_device_trees() {
+  local installed_root="$1"
+  local output_root="${DIST_DIR}/device-trees"
+  local base_name
+  local tree
+  local name
+  local profile
+
+  rm -rf "${output_root}"
+  mkdir -p "${output_root}/base"
+  for base_name in kalama.dtb kalama-v2.dtb kalamap.dtb kalamap-v2.dtb; do
+    tree="$(find "${installed_root}" -type f -name "${base_name}" -print -quit)"
+    if [ -z "${tree}" ]; then
+      echo "Missing universal Qualcomm base DTB: ${base_name}" >&2
+      return 1
+    fi
+    cp "${tree}" "${output_root}/base/${base_name}"
+  done
+
+  while IFS= read -r -d '' tree; do
+    name="$(basename "${tree}")"
+    profile="$(universal_dt_profile "${name}")" || continue
+    mkdir -p "${output_root}/${profile}/dtbo"
+    cp "${tree}" "${output_root}/${profile}/dtbo/${name}"
+  done < <(find "${installed_root}" -type f -name '*.dtbo' -print0)
+
+  while IFS= read -r -d '' tree; do
+    name="$(basename "${tree}")"
+    profile="$(universal_dt_profile "${name}")" || continue
+    mkdir -p "${output_root}/${profile}/dtb"
+    cp "${tree}" "${output_root}/${profile}/dtb/${name}"
+  done < <(
+    find "${OUT_DIR}/arch/${ARCH}/boot/dts/samsung" \
+      -type f -name '*.dtb' -print0
+  )
 }
 append_cmd DIST_CMDS 'install_dtbs'
 ADDITIONAL_HOST_TOOLS+=" install"  # for scripts/Makefile.dtbinst
@@ -234,6 +290,12 @@ fi
 LIBUFDT_PREBUILTS_BIN=tools/libufdt/utils/src
 function make_dtbo_img() {
   mkdir -p ${DIST_DIR}/
+
+  # Different Samsung products reuse Qualcomm board IDs.  Keep the raw
+  # overlays separated by profile instead of creating an ambiguous image.
+  if [ "${SEC_PROJECT_CONFIG:-}" = "universal" ]; then
+    return 0
+  fi
 
   find ${OUT_DIR} -name  "${MODEL}_${REGION}_*.dtbo" -exec cp "{}" ${DIST_DIR}/ \;
 

@@ -254,6 +254,15 @@ config SEC_B5Q_PROJECT
 
 endchoice
 
+config SEC_UNIVERSAL_PROJECT
+	bool "Samsung Kalama universal project"
+	depends on ARCH_KALAMA
+	help
+	  Build one kernel and module set for the Galaxy S23 and Fold5/Flip5
+	  families.  Product-specific hardware remains selected by each device
+	  tree; this option only enables the union of the required drivers and
+	  builds every in-tree Samsung Kalama device tree.
+
 config SEC_DM3Q_EUR_OPENX_PROJECT
 	bool "Samsung Galaxy S23 Ultra (dm3q EUR/OpenX)"
 	depends on SEC_DM3Q_PROJECT
