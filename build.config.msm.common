@@ -96,6 +96,11 @@ function stage_universal_device_trees() {
     cp "${tree}" "${output_root}/base/${base_name}"
   done
 
+  # Do not copy stale product DTBs from a prior overlay-enabled build.
+  if ! grep -q '^CONFIG_SM8550_DTBO=y$' "${OUT_DIR}/.config"; then
+    return 0
+  fi
+
   while IFS= read -r -d '' tree; do
     name="$(basename "${tree}")"
     profile="$(universal_dt_profile "${name}")" || continue
@@ -110,7 +115,7 @@ function stage_universal_device_trees() {
     cp "${tree}" "${output_root}/${profile}/dtb/${name}"
   done < <(
     find "${OUT_DIR}/arch/${ARCH}/boot/dts/samsung" \
-      -type f -name '*.dtb' -print0
+      -type f -name '*.dtb' ! -path '*/diamond/dm3q_eur_openx/*' -print0
   )
 }
 append_cmd DIST_CMDS 'install_dtbs'
@@ -289,6 +294,11 @@ fi
 ## DT Overlay
 LIBUFDT_PREBUILTS_BIN=tools/libufdt/utils/src
 function make_dtbo_img() {
+  if [ "${MSM_ARCH}" = "kalama" ] &&
+     ! grep -q '^CONFIG_SM8550_DTBO=y$' "${OUT_DIR}/.config"; then
+    return 0
+  fi
+
   mkdir -p ${DIST_DIR}/
 
   # Different Samsung products reuse Qualcomm board IDs.  Keep the raw

@@ -232,6 +232,15 @@ config ARCH_KALAMA
 	  KALAMA chipset. If you do not wish to build a kernel that
 	  runs on this chipset or if you are unsure, say 'N' here.
 
+config SM8550_DTBO
+	bool "Build SM8550 device-tree overlays"
+	depends on ARCH_KALAMA
+	default y
+	help
+	  Build device-tree overlays and the product DTBs that apply them.
+	  Disable this to build only the Qualcomm base DTBs and keep the
+	  device's existing product device trees.
+
 choice
 	prompt "Samsung Kalama project"
 	depends on ARCH_KALAMA
@@ -261,7 +270,8 @@ config SEC_UNIVERSAL_PROJECT
 	  Build one kernel and module set for the Galaxy S23 and Fold5/Flip5
 	  families.  Product-specific hardware remains selected by each device
 	  tree; this option only enables the union of the required drivers and
-	  builds every in-tree Samsung Kalama device tree.
+	  builds the enabled Samsung Kalama device trees when SM8550_DTBO
+	  is enabled.
 
 config SEC_DM3Q_EUR_OPENX_PROJECT
 	bool "Samsung Galaxy S23 Ultra (dm3q EUR/OpenX)"
