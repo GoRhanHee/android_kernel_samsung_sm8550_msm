@@ -235,7 +235,7 @@ config ARCH_KALAMA
 config SM8550_DTBO
 	bool "Build SM8550 device-tree overlays"
 	depends on ARCH_KALAMA
-	default y
+	default n
 	help
 	  Build device-tree overlays and the product DTBs that apply them.
 	  Disable this to build only the Qualcomm base DTBs and keep the
