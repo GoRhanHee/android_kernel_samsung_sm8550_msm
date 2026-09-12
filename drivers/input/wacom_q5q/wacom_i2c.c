@@ -18,6 +18,7 @@
  */
 
 #include "wacom_dev.h"
+#include "../sec_universal.h"
 
 void wacom_release(struct input_dev *input_dev)
 {
@@ -3270,6 +3271,11 @@ static int wacom_i2c_probe(struct i2c_client *client,
 	struct wacom_i2c *wac_i2c;
 	int ret = 0;
 	u16 firmware_index = 0;
+
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+	if (!sec_input_is_q5q_wacom(client->dev.of_node))
+		return -ENODEV;
+#endif
 
 	pr_info("%s: %s: start!\n", SECLOG, __func__);
 

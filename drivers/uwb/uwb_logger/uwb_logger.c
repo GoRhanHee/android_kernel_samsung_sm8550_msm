@@ -22,6 +22,7 @@ static unsigned int g_curpos;
 static int is_uwb_logger_init;
 static int is_buf_full;
 static int log_max_count = -1;
+static struct proc_dir_entry *uwb_logger_entry;
 
 /* set max log count, if count is -1, no limit */
 void uwb_logger_set_max_count(int count)
@@ -163,10 +164,18 @@ int uwb_logger_init(void)
 	}
 
 	proc_set_size(entry, BUF_SIZE);
+	uwb_logger_entry = entry;
 	is_uwb_logger_init = 1;
 	uwb_logger_print("uwb logger init ok\n");
 
 	return 0;
+}
+
+void uwb_logger_exit(void)
+{
+	proc_remove(uwb_logger_entry);
+	uwb_logger_entry = NULL;
+	is_uwb_logger_init = 0;
 }
 
 MODULE_LICENSE("GPL");

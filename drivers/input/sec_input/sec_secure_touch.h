@@ -1,3 +1,6 @@
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+#include "../sec_input_q5q/sec_secure_touch.h"
+#else
 #ifndef _SEC_SECURE_TOUCH_H_
 #define _SEC_SECURE_TOUCH_H_
 
@@ -89,3 +92,4 @@ void sec_secure_touch_unregister(int dev_num);
 extern void hall_ic_register_notify(struct notifier_block *nb);
 extern void hall_ic_unregister_notify(struct notifier_block *nb);
 #endif
+#endif /* CONFIG_SEC_UNIVERSAL_PROJECT */

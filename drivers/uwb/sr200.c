@@ -23,6 +23,7 @@
  *
  * @{ */
 #include "sr200.h"
+#include "uwb.h"
 #include "../uwb/uwb_logger/uwb_logger.h"
 
 #define DEBUG_LOG
@@ -981,13 +982,15 @@ static struct spi_driver sr200_driver = {
  *
  * Returns     : returns handle
  ****************************************************************************/
-static int __init sr200_dev_init(void) {
+int __init sr200_dev_init(void) {
   debug_level = SR200_FULL_DEBUG;
   uwb_logger_init();
   SR200_DBG_MSG("entry : %s\n", __FUNCTION__);
   return spi_register_driver(&sr200_driver);
 }
+#ifndef CONFIG_SAMSUNG_UWB_MODULE
 module_init(sr200_dev_init);
+#endif
 /******************************************************************************
  * Function    : sr200_dev_exit
  *
@@ -997,12 +1000,14 @@ module_init(sr200_dev_init);
  *
  * Returns     : returns void
  ****************************************************************************/
-static void __exit sr200_dev_exit(void) {
+void sr200_dev_exit(void) {
   SR200_DBG_MSG("entry : %s\n", __FUNCTION__);
   spi_unregister_driver(&sr200_driver);
   SR200_DBG_MSG("exit : %s\n", __FUNCTION__);
 }
+#ifndef CONFIG_SAMSUNG_UWB_MODULE
 module_exit(sr200_dev_exit);
+#endif
 MODULE_AUTHOR("Manjunatha Venkatesh");
 MODULE_DESCRIPTION("NXP SR200 SPI driver");
 MODULE_LICENSE("GPL");

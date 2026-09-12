@@ -160,7 +160,11 @@ extern struct tsp_dump_callbacks dump_callbacks;
 #define USE_OPEN_CLOSE
 
 #define STM_TS_I2C_NAME		"stm_ts"
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+#define STM_TS_SPI_NAME		"stm_ts_spi_s23"
+#else
 #define STM_TS_SPI_NAME		"stm_ts_spi"
+#endif
 #define STM_TS_DEVICE_NAME	"STM_TS"
 
 enum stm_ts_error_return {
@@ -502,6 +506,9 @@ struct stm_ts_data {
 	struct sec_ts_plat_data *plat_data;
 	struct mutex lock;
 	bool probe_done;
+#if defined(CONFIG_SEC_UNIVERSAL_PROJECT) && IS_ENABLED(CONFIG_INPUT_SEC_SECURE_TOUCH)
+	bool ss_touch_registered;
+#endif
 	struct sec_cmd_data sec;
 	int tx_count;
 	int rx_count;
@@ -817,4 +824,3 @@ void stm_ts_trusted_touch_tvm_i2c_failure_report(struct stm_ts_data *ts);
 #endif
 
 #endif /* _LINUX_stm_ts_H_ */
-

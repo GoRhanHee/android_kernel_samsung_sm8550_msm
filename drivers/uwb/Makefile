@@ -5,6 +5,7 @@
 
 ifeq ($(CONFIG_SAMSUNG_UWB),m)
 obj-$(CONFIG_SAMSUNG_UWB)	+= uwb.o
+uwb-y				+= uwb_main.o
 uwb-$(CONFIG_UWB_SR200)		+= sr200.o
 uwb-$(CONFIG_UWB_SR100)		+= sr100.o
 uwb-$(CONFIG_SEC_UWB_LOGGER)	+= uwb_logger/uwb_logger.o

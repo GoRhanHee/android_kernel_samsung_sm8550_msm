@@ -18,6 +18,13 @@
  */
 
 #include "wacom_dev.h"
+#include "../sec_universal.h"
+
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+#define WACOM_DRIVER_NAME "wacom_w90xx_s23"
+#else
+#define WACOM_DRIVER_NAME "wacom_w90xx"
+#endif
 
 struct wacom_i2c *g_wac_i2c;
 struct notifier_block *g_nb_wac_camera;
@@ -3303,6 +3310,11 @@ static int wacom_i2c_probe(struct i2c_client *client,
 	int ret = 0;
 	u16 firmware_index = 0;
 
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+	if (!sec_input_is_s23_wacom(client->dev.of_node))
+		return -ENODEV;
+#endif
+
 	pr_info("%s: %s: start!\n", SECLOG, __func__);
 
 	ret = i2c_check_functionality(client->adapter, I2C_FUNC_I2C);
@@ -3725,7 +3737,7 @@ static int wacom_i2c_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id wacom_i2c_id[] = {
-	{"wacom_w90xx", 0},
+	{WACOM_DRIVER_NAME, 0},
 	{},
 };
 
@@ -3741,7 +3753,7 @@ static const struct of_device_id wacom_dt_ids[] = {
 static struct i2c_driver wacom_i2c_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
-		.name = "wacom_w90xx",
+		.name = WACOM_DRIVER_NAME,
 #if IS_ENABLED(CONFIG_PM)
 		.pm = &wacom_pm_ops,
 #endif

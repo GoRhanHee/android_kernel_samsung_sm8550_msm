@@ -1,3 +1,10 @@
+ifeq ($(CONFIG_SEC_UNIVERSAL_PROJECT),y)
+# The S23 utility ABI differs from the Fold/Flip implementation. Shared
+# notifier, logging, secure-touch and dumpkey services come from sec_input_q5q.
+obj-$(CONFIG_INPUT_SEC_INPUT) += sec_common_fn_s23.o sec_cmd.o
+sec_common_fn_s23-y := sec_common_fn.o
+obj-$(CONFIG_INPUT_TOUCHSCREEN_TCLMV2) += sec_tclm_v2.o
+else
 obj-$(CONFIG_SEC_DEBUG_TSP_LOG) += sec_tsp_log.o
 obj-$(CONFIG_INPUT_TOUCHSCREEN_TCLMV2)	+= sec_tclm_v2.o
 obj-$(CONFIG_INPUT_SEC_SECURE_TOUCH)	+= sec_secure_touch.o
@@ -14,6 +21,8 @@ sec_common-$(CONFIG_INPUT_SEC_INPUT) += sec_common_fn.o sec_cmd.o
 else
 obj-$(CONFIG_INPUT_SEC_INPUT) += sec_common_fn.o sec_cmd.o
 endif
+endif
+
 endif
 
 ccflags-y += -Wformat

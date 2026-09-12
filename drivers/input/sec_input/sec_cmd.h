@@ -1,5 +1,6 @@
 #ifndef _SEC_CMD_H_
 #define _SEC_CMD_H_
+#include "sec_input_s23_symbols.h"
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>

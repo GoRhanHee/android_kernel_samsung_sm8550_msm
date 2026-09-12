@@ -112,7 +112,6 @@ void stm_ts_sponge_dump_flush(struct stm_ts_data *ts, int dump_area)
 	input_info(true, &ts->client->dev, "%s: --\n", __func__);
 
 }
-EXPORT_SYMBOL(stm_ts_sponge_dump_flush);
 #endif
 
 MODULE_LICENSE("GPL");

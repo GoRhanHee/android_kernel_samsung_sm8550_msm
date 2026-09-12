@@ -47,6 +47,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/mutex.h>
 #include "sr100.h"
+#include "uwb.h"
 #include "../uwb/uwb_logger/uwb_logger.h"
 
 #if IS_ENABLED(CONFIG_ACPM_INIT)
@@ -1402,7 +1403,7 @@ static struct spi_driver sr100_driver = {
  *
  * Returns     : returns handle
  ****************************************************************************/
- static int __init sr100_dev_init(void) {
+int __init sr100_dev_init(void) {
   int ret = -1;
   uwb_logger_init();
 
@@ -1413,7 +1414,9 @@ static struct spi_driver sr100_driver = {
   UWB_LOG_INFO("Exit : %s ret =%d\n", __FUNCTION__, ret);
   return ret;
 }
+#ifndef CONFIG_SAMSUNG_UWB_MODULE
 module_init(sr100_dev_init);
+#endif
 
 /******************************************************************************
  * Function    : sr100_dev_exit
@@ -1424,13 +1427,15 @@ module_init(sr100_dev_init);
  *
  * Returns     : returns void
  ****************************************************************************/
-static void __exit sr100_dev_exit(void) {
+void sr100_dev_exit(void) {
   UWB_LOG_INFO("Entry : %s\n", __FUNCTION__);
 
   spi_unregister_driver(&sr100_driver);
   UWB_LOG_INFO("Exit : %s\n", __FUNCTION__);
 }
+#ifndef CONFIG_SAMSUNG_UWB_MODULE
 module_exit(sr100_dev_exit);
+#endif
 
 MODULE_AUTHOR("Manjunatha Venkatesh");
 MODULE_DESCRIPTION("NXP SR100 SPI driver");

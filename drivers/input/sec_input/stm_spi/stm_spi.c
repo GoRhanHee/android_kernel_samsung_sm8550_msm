@@ -11,6 +11,7 @@
 
 #include "stm_dev.h"
 #include "stm_reg.h"
+#include "../../sec_universal.h"
 
 #if IS_ENABLED(CONFIG_INPUT_SEC_SECURE_TOUCH)
 int stm_pm_runtime_get_sync(struct stm_ts_data *ts)
@@ -883,6 +884,11 @@ int stm_ts_spi_probe(struct spi_device *client)
 	struct sec_ts_plat_data *pdata;
 	struct sec_tclm_data *tdata;
 	int ret = 0;
+
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+	if (!sec_input_is_s23_spi(client->dev.of_node))
+		return -ENODEV;
+#endif
 
 	input_info(true, &client->dev, "%s\n", __func__);
 

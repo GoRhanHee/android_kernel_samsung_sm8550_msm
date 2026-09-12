@@ -1,6 +1,7 @@
 
 #ifndef _SEC_TCLM_H_
 #define _SEC_TCLM_H_
+#include "sec_input_s23_symbols.h"
 
 #include <linux/interrupt.h>
 #include <linux/irq.h>

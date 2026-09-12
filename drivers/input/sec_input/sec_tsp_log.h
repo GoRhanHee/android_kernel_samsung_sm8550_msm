@@ -1,4 +1,13 @@
 
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+#include "../sec_input_q5q/sec_tsp_log.h"
+#if !IS_ENABLED(CONFIG_TOUCHSCREEN_DUAL_FOLDABLE)
+/* The single-panel S23 API uses the main panel's shared log buffer. */
+#define sec_debug_tsp_raw_data_msg(msg, fmt, ...) \
+	sec_debug_tsp_raw_data_msg(0, msg, fmt, ##__VA_ARGS__)
+#define sec_tsp_raw_data_clear() sec_tsp_raw_data_clear(0)
+#endif
+#else
 #ifndef _SEC_TSP_LOG_H_
 #define _SEC_TSP_LOG_H_
 
@@ -47,3 +56,4 @@ void sec_tsp_raw_data_clear(void);
 
 void sec_debug_tsp_command_history(char *buf);
 #endif /* _SEC_TSP_LOG_H_ */
+#endif /* CONFIG_SEC_UNIVERSAL_PROJECT */

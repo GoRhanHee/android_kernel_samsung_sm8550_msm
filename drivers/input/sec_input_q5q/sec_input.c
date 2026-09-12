@@ -1877,6 +1877,22 @@ void stui_tsp_init(int (*stui_tsp_enter)(void), int (*stui_tsp_exit)(void), int 
 EXPORT_SYMBOL(stui_tsp_init);
 
 
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+/* The S23 utilities own a different platform-data ABI and may load later. */
+static int sec_input_s23_tui_call(const char *symbol)
+{
+	int (*callback)(void);
+	int ret;
+
+	callback = __symbol_get(symbol);
+	if (!callback)
+		return -EINVAL;
+	ret = callback();
+	__symbol_put(symbol);
+	return ret;
+}
+#endif
+
 int stui_tsp_enter(void)
 {
 	struct sec_ts_plat_data *pdata = NULL;
@@ -1888,7 +1904,11 @@ int stui_tsp_enter(void)
 
 	if (ptsp == NULL) {
 		pr_info("%s: ptsp is null\n", __func__);
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+		return sec_input_s23_tui_call("s23_stui_tsp_enter");
+#else
 		return -EINVAL;
+#endif
 	}
 
 	pdata = ptsp->platform_data;
@@ -1911,8 +1931,13 @@ int stui_tsp_exit(void)
 		return psecuretsp->stui_tsp_exit();
 	}
 
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+	if (ptsp == NULL)
+		return sec_input_s23_tui_call("s23_stui_tsp_exit");
+#else
 	if (ptsp == NULL)
 		return -EINVAL;
+#endif
 
 	pdata = ptsp->platform_data;
 	if (pdata == NULL)
@@ -1932,8 +1957,13 @@ int stui_tsp_type(void)
 		return psecuretsp->stui_tsp_type();
 	}
 
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+	if (ptsp == NULL)
+		return sec_input_s23_tui_call("s23_stui_tsp_type");
+#else
 	if (ptsp == NULL)
 		return -EINVAL;
+#endif
 
 	pdata = ptsp->platform_data;
 	if (pdata == NULL)

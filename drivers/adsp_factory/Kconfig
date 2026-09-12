@@ -54,7 +54,7 @@ config SUPPORT_MAG_ABS_SUM
 
 config LPS22HH_FACTORY
 	bool "factory test for SSC - lps22hh"
-    depends on ADSP_FACTORY
+	depends on ADSP_FACTORY && !PRESSURE_FACTORY
 	help
 	  lps22hh factory driver.
 	  provide sysfs for factory test.

@@ -2687,7 +2687,12 @@ static int stm_ts_init(struct stm_ts_data *ts)
 	else
 		secure_touch_init(ts);
 
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+	ts->ss_touch_registered = sec_secure_touch_register(ts, &ts->client->dev,
+		ts->plat_data->ss_touch_num, &ts->plat_data->input_dev->dev.kobj) != NULL;
+#else
 	sec_secure_touch_register(ts, ts->plat_data->ss_touch_num, &ts->plat_data->input_dev->dev.kobj);
+#endif
 
 #if IS_ENABLED(CONFIG_GH_RM_DRV)
 	stm_ts_trusted_touch_init(ts);
@@ -2696,7 +2701,11 @@ static int stm_ts_init(struct stm_ts_data *ts)
 #endif
 #endif
 #if IS_ENABLED(CONFIG_TOUCHSCREEN_DUMP_MODE)
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+	sec_input_dumpkey_register(0, stm_ts_dump_tsp_log, &ts->client->dev);
+#else
 	dump_callbacks.inform_dump = stm_ts_dump_tsp_log;
+#endif
 	INIT_DELAYED_WORK(&ts->check_rawdata, stm_ts_check_rawdata);
 #endif
 	input_info(true, &ts->client->dev, "%s: init resource\n", __func__);
@@ -2744,9 +2753,19 @@ void stm_ts_release(struct stm_ts_data *ts)
 	flush_delayed_work(&ts->reset_work);
 #if IS_ENABLED(CONFIG_TOUCHSCREEN_DUMP_MODE)
 	cancel_delayed_work_sync(&ts->check_rawdata);
+#ifdef CONFIG_SEC_UNIVERSAL_PROJECT
+	sec_input_dumpkey_unregister(0);
+#else
 	dump_callbacks.inform_dump = NULL;
 #endif
+#endif
 	stm_ts_fn_remove(ts);
+#if defined(CONFIG_SEC_UNIVERSAL_PROJECT) && IS_ENABLED(CONFIG_INPUT_SEC_SECURE_TOUCH)
+	if (ts->ss_touch_registered) {
+		sec_secure_touch_unregister(ts->plat_data->ss_touch_num);
+		ts->ss_touch_registered = false;
+	}
+#endif
 
 	device_init_wakeup(&ts->client->dev, false);
 	wakeup_source_unregister(ts->plat_data->sec_ws);

@@ -8,6 +8,8 @@
  * published by the Free Software Foundation.
  */
 
+#include "sec_input_s23_symbols.h"
+
 #if IS_ENABLED(CONFIG_SEC_KUNIT)
 #include <kunit/test.h>
 #include <kunit/mock.h>
