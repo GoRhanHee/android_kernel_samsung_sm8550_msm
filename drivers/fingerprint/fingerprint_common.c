@@ -1,4 +1,5 @@
 #include "fingerprint_common.h"
+#include <linux/module.h>
 
 void set_sensor_type(const int type_value, int *result)
 {
@@ -17,25 +18,35 @@ void set_sensor_type(const int type_value, int *result)
 	}
 }
 
+EXPORT_SYMBOL_GPL(set_sensor_type);
+
 void enable_fp_debug_timer(struct debug_logger *logger)
 {
 	mod_timer(&logger->dbg_timer, round_jiffies_up(jiffies + DEBUG_TIMER_SEC));
 }
+EXPORT_SYMBOL_GPL(enable_fp_debug_timer);
 
 void disable_fp_debug_timer(struct debug_logger *logger)
 {
 	del_timer_sync(&logger->dbg_timer);
 	cancel_work_sync(&logger->work_debug);
 }
+EXPORT_SYMBOL_GPL(disable_fp_debug_timer);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
-void timer_func(unsigned long ptr)
+static void timer_func(unsigned long ptr)
 #else
-void timer_func(struct timer_list *t)
+static void timer_func(struct timer_list *t)
 #endif
 {
-	queue_work(g_logger->wq_dbg, &g_logger->work_debug);
-	enable_fp_debug_timer(g_logger);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+	struct debug_logger *logger = (struct debug_logger *)ptr;
+#else
+	struct debug_logger *logger = from_timer(logger, t, dbg_timer);
+#endif
+
+	queue_work(logger->wq_dbg, &logger->work_debug);
+	enable_fp_debug_timer(logger);
 }
 
 int set_fp_debug_timer(struct debug_logger *logger,
@@ -43,7 +54,7 @@ int set_fp_debug_timer(struct debug_logger *logger,
 {
 	int rc = 0;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
-	setup_timer(&logger->dbg_timer, timer_func, 0);
+	setup_timer(&logger->dbg_timer, timer_func, (unsigned long)logger);
 #else
 	timer_setup(&logger->dbg_timer, timer_func, 0);
 #endif
@@ -58,6 +69,8 @@ int set_fp_debug_timer(struct debug_logger *logger,
 	return rc;
 }
 
+EXPORT_SYMBOL_GPL(set_fp_debug_timer);
+
 void set_delay_in_spi_transfer(struct spi_transfer *xfer, unsigned int usec)
 {
 #if LINUX_VERSION_CODE > KERNEL_VERSION(5, 10, 0)
@@ -67,3 +80,6 @@ void set_delay_in_spi_transfer(struct spi_transfer *xfer, unsigned int usec)
 	xfer->delay_usecs = usec;
 #endif
 }
+EXPORT_SYMBOL_GPL(set_delay_in_spi_transfer);
+
+MODULE_LICENSE("GPL");

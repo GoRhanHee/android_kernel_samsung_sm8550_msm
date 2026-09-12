@@ -33,7 +33,6 @@ static const struct of_device_id gw3x_of_match[] = {
 MODULE_DEVICE_TABLE(of, gw3x_of_match);
 
 static struct gf_device *g_data;
-struct debug_logger *g_logger;
 
 static ssize_t bfs_values_show(struct device *dev,
 				      struct device_attribute *attr, char *buf)
@@ -1054,7 +1053,6 @@ static int gw3x_probe_common(struct device *dev, struct gf_device *gf_dev)
 	gf_dev->irq_enabled = 1;
 	gw3x_disable_irq(gf_dev);
 
-	g_logger = gf_dev->logger;
 	retval = set_fp_debug_timer(gf_dev->logger, gw3x_work_func_debug);
 	if (retval)
 		goto gw3x_probe_debug_timer;

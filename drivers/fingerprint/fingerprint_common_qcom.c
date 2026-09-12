@@ -1,4 +1,5 @@
 #include "fingerprint_common.h"
+#include <linux/export.h>
 #include <linux/version.h>
 #if defined(CONFIG_CPU_FREQ_LIMIT) || defined(CONFIG_CPU_FREQ_LIMIT_USERSPACE)
 #if (KERNEL_VERSION(5, 4, 0) > LINUX_VERSION_CODE)
@@ -17,16 +18,19 @@ void spi_get_ctrldata(struct spi_device *spi)
 {
 
 }
+EXPORT_SYMBOL_GPL(spi_get_ctrldata);
 
 int spi_clk_register(struct spi_clk_setting *clk_setting, struct device *dev)
 {
 	return 0;
 }
+EXPORT_SYMBOL_GPL(spi_clk_register);
 
 int spi_clk_unregister(struct spi_clk_setting *clk_setting)
 {
 	return 0;
 }
+EXPORT_SYMBOL_GPL(spi_clk_unregister);
 
 int spi_clk_enable(struct spi_clk_setting *clk_setting)
 {
@@ -40,6 +44,8 @@ int spi_clk_enable(struct spi_clk_setting *clk_setting)
 	return 0;
 }
 
+EXPORT_SYMBOL_GPL(spi_clk_enable);
+
 int spi_clk_disable(struct spi_clk_setting *clk_setting)
 {
 #ifdef ENABLE_SENSORS_FPRINT_SECURE
@@ -51,6 +57,8 @@ int spi_clk_disable(struct spi_clk_setting *clk_setting)
 
 	return 0;
 }
+
+EXPORT_SYMBOL_GPL(spi_clk_disable);
 
 int cpu_speedup_enable(struct boosting_config *boosting)
 {
@@ -70,6 +78,8 @@ int cpu_speedup_enable(struct boosting_config *boosting)
 	return retval;
 }
 
+EXPORT_SYMBOL_GPL(cpu_speedup_enable);
+
 int cpu_speedup_disable(struct boosting_config *boosting)
 {
 	int retval = 0;
@@ -87,3 +97,4 @@ int cpu_speedup_disable(struct boosting_config *boosting)
 
 	return retval;
 }
+EXPORT_SYMBOL_GPL(cpu_speedup_disable);

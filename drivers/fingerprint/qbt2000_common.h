@@ -153,6 +153,4 @@ struct qbt2000_drvdata {
 extern unsigned int lpcharge;
 #endif
 
-struct debug_logger *g_logger;
-
 #endif /* _UAPI_QBT2000_H_ */

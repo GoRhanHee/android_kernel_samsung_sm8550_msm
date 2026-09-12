@@ -1180,7 +1180,6 @@ static int qbt2000_probe(struct platform_device *pdev)
 	drvdata->tz_mode = false;
 #endif
 
-	g_logger = drvdata->logger;
 	set_fp_debug_timer(drvdata->logger, qbt2000_work_func_debug);
 	enable_fp_debug_timer(drvdata->logger);
 

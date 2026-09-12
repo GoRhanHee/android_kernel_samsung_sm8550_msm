@@ -17,9 +17,19 @@ fingerprint-$(CONFIG_SENSORS_ET5XX)		+= et5xx-spi.o et5xx-spi_data_transfer.o
 fingerprint-$(CONFIG_SENSORS_EC6XX)		+= ec6xx-spi.o ec6xx-spi_data_transfer.o
 fingerprint-$(CONFIG_SENSORS_ET7XX)		+= et7xx-spi.o et7xx-spi_data_transfer.o
 fingerprint-$(CONFIG_SENSORS_EL7XX)		+= el7xx-spi.o el7xx-spi_data_transfer.o
-fingerprint-$(CONFIG_SENSORS_GW3X)		+= gw3x_common.o gw3x_spidev.o
 fingerprint-$(CONFIG_SENSORS_GW9558X)	+= gw9558x_common.o gw9558x_spidev.o
+
+ifeq ($(CONFIG_SEC_UNIVERSAL_PROJECT),y)
+# Each sensor has its own module entry points. Keep the common helpers in
+# fingerprint.ko and link the universal project's sensors independently.
+obj-$(CONFIG_SENSORS_GW3X)			+= gw3x.o
+gw3x-y := gw3x_common.o gw3x_spidev.o
+obj-$(CONFIG_SENSORS_QBT2000)			+= qbt2000_common.o
+else
+fingerprint-$(CONFIG_SENSORS_GW3X)		+= gw3x_common.o gw3x_spidev.o
 fingerprint-$(CONFIG_SENSORS_QBT2000)	+= qbt2000_common.o
+endif
+
 obj-$(CONFIG_SENSORS_QBT2000)			+= qbt2000_spidev.o
 fingerprint-$(CONFIG_SENSORS_QFS4008)	+= qfs4008_common.o
 obj-$(CONFIG_SENSORS_QFS4008)			+= qfs4008_spidev.o
