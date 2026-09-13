@@ -28,8 +28,6 @@
 #include "adsp.h"
 
 #if IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
-static bool s23_factory_protocol;
-
 /* Wire IDs from the DM1Q/DM2Q/DM3Q factory.ssc ABI. Fold-only entries in
  * the universal enum must not change the protocol used by S23 firmware.
  * Keep buffers and ready flags indexed by the kernel's enum internally.
@@ -51,24 +49,72 @@ static const u8 s23_sensor_types[] = {
 	MSG_SSC_CORE,
 };
 
+/* Q5Q/B5Q have dual sensors but no flip-cover detector in their wire ABI.
+ * The S23-only detector in the universal enum shifts all subsequent IDs.
+ */
+static const u8 fold_sensor_types[] = {
+	MSG_ACCEL,
+	MSG_GYRO,
+	MSG_MAG,
+	MSG_PRESSURE,
+	MSG_LIGHT,
+	MSG_PROX,
+	MSG_LIGHT_SUB,
+	MSG_PROX_SUB,
+	MSG_ACCEL_SUB,
+	MSG_GYRO_SUB,
+	PHYSICAL_SENSOR_SYSFS,
+	MSG_GYRO_TEMP,
+	MSG_GYRO_SUB_TEMP,
+	MSG_PRESSURE_TEMP,
+	MSG_MAG_CAL,
+	MSG_VIR_OPTIC,
+	MSG_REG_SNS,
+	MSG_REF_ANGLE,
+	MSG_FACTORY_INIT_CMD,
+	MSG_SSC_CORE,
+};
+
+struct adsp_factory_protocol {
+	const char *model;
+	const u8 *sensor_types;
+	size_t sensor_count;
+};
+
+static const struct adsp_factory_protocol factory_protocols[] = {
+	{ "Samsung DM1Q PROJECT", s23_sensor_types, ARRAY_SIZE(s23_sensor_types) },
+	{ "Samsung DM2Q PROJECT", s23_sensor_types, ARRAY_SIZE(s23_sensor_types) },
+	{ "Samsung DM3Q PROJECT", s23_sensor_types, ARRAY_SIZE(s23_sensor_types) },
+	{ "Samsung Q5Q PROJECT", fold_sensor_types, ARRAY_SIZE(fold_sensor_types) },
+	{ "Samsung B5Q PROJECT", fold_sensor_types, ARRAY_SIZE(fold_sensor_types) },
+};
+
+static const struct adsp_factory_protocol *factory_protocol;
+
 static void __init adsp_factory_protocol_init(void)
 {
 	struct device_node *root;
 	const char *model;
+	unsigned int i;
 
 	root = of_find_node_by_path("/");
 	if (!root)
 		return;
 
-	if (!of_property_read_string(root, "model", &model))
-		s23_factory_protocol = strstr(model, "Samsung DM1Q PROJECT") ||
-			strstr(model, "Samsung DM2Q PROJECT") ||
-			strstr(model, "Samsung DM3Q PROJECT");
+	if (!of_property_read_string(root, "model", &model)) {
+		for (i = 0; i < ARRAY_SIZE(factory_protocols); i++) {
+			if (strstr(model, factory_protocols[i].model)) {
+				factory_protocol = &factory_protocols[i];
+				break;
+			}
+		}
+	}
 
 	of_node_put(root);
-	if (s23_factory_protocol)
-		pr_info("[FACTORY] S23 netlink protocol: SSC core %u -> %zu\n",
-			MSG_SSC_CORE, ARRAY_SIZE(s23_sensor_types) - 1);
+	if (factory_protocol)
+		pr_info("[FACTORY] %s netlink protocol: SSC core %u -> %zu\n",
+			factory_protocol->model, MSG_SSC_CORE,
+			factory_protocol->sensor_count - 1);
 }
 #endif
 
@@ -77,13 +123,13 @@ static int adsp_sensor_to_daemon(u16 sensor_type)
 #if IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
 	unsigned int i;
 
-	if (s23_factory_protocol) {
-		for (i = 0; i < ARRAY_SIZE(s23_sensor_types); i++)
-			if (s23_sensor_types[i] == sensor_type)
+	if (factory_protocol) {
+		for (i = 0; i < factory_protocol->sensor_count; i++)
+			if (factory_protocol->sensor_types[i] == sensor_type)
 				return i;
 
-		/* S23 has no secondary/fold sensors. Never send their IDs to
-		 * factory.ssc, where they could name a different sensor or abort.
+		/* Never send sensors absent from this model's wire ABI, where
+		 * they could name a different sensor or abort factory.ssc.
 		 */
 		return -EOPNOTSUPP;
 	}
@@ -94,11 +140,11 @@ static int adsp_sensor_to_daemon(u16 sensor_type)
 static int adsp_sensor_from_daemon(u16 sensor_type)
 {
 #if IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
-	if (s23_factory_protocol) {
-		if (sensor_type >= ARRAY_SIZE(s23_sensor_types))
+	if (factory_protocol) {
+		if (sensor_type >= factory_protocol->sensor_count)
 			return -EINVAL;
 
-		return s23_sensor_types[sensor_type];
+		return factory_protocol->sensor_types[sensor_type];
 	}
 #endif
 	return sensor_type;
