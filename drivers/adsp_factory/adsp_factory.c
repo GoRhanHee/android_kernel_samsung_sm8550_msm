@@ -22,8 +22,87 @@
 #include <linux/mutex.h>
 #include <linux/device.h>
 #include <linux/err.h>
+#include <linux/of.h>
 #include <linux/sec_class.h>
+#include <linux/string.h>
 #include "adsp.h"
+
+#if IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
+static bool s23_factory_protocol;
+
+/* Wire IDs from the DM1Q/DM2Q/DM3Q factory.ssc ABI. Fold-only entries in
+ * the universal enum must not change the protocol used by S23 firmware.
+ * Keep buffers and ready flags indexed by the kernel's enum internally.
+ */
+static const u8 s23_sensor_types[] = {
+	MSG_ACCEL,
+	MSG_GYRO,
+	MSG_MAG,
+	MSG_PRESSURE,
+	MSG_LIGHT,
+	MSG_PROX,
+	PHYSICAL_SENSOR_SYSFS,
+	MSG_GYRO_TEMP,
+	MSG_PRESSURE_TEMP,
+	MSG_MAG_CAL,
+	MSG_FLIP_COVER_DETECTOR,
+	MSG_REG_SNS,
+	MSG_FACTORY_INIT_CMD,
+	MSG_SSC_CORE,
+};
+
+static void __init adsp_factory_protocol_init(void)
+{
+	struct device_node *root;
+	const char *model;
+
+	root = of_find_node_by_path("/");
+	if (!root)
+		return;
+
+	if (!of_property_read_string(root, "model", &model))
+		s23_factory_protocol = strstr(model, "Samsung DM1Q PROJECT") ||
+			strstr(model, "Samsung DM2Q PROJECT") ||
+			strstr(model, "Samsung DM3Q PROJECT");
+
+	of_node_put(root);
+	if (s23_factory_protocol)
+		pr_info("[FACTORY] S23 netlink protocol: SSC core %u -> %zu\n",
+			MSG_SSC_CORE, ARRAY_SIZE(s23_sensor_types) - 1);
+}
+#endif
+
+static int adsp_sensor_to_daemon(u16 sensor_type)
+{
+#if IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
+	unsigned int i;
+
+	if (s23_factory_protocol) {
+		for (i = 0; i < ARRAY_SIZE(s23_sensor_types); i++)
+			if (s23_sensor_types[i] == sensor_type)
+				return i;
+
+		/* S23 has no secondary/fold sensors. Never send their IDs to
+		 * factory.ssc, where they could name a different sensor or abort.
+		 */
+		return -EOPNOTSUPP;
+	}
+#endif
+	return sensor_type;
+}
+
+static int adsp_sensor_from_daemon(u16 sensor_type)
+{
+#if IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
+	if (s23_factory_protocol) {
+		if (sensor_type >= ARRAY_SIZE(s23_sensor_types))
+			return -EINVAL;
+
+		return s23_sensor_types[sensor_type];
+	}
+#endif
+	return sensor_type;
+}
 
 static u8 msg_size[MSG_SENSOR_MAX] = {		
 	MSG_ACCEL_MAX,
@@ -97,7 +176,17 @@ int adsp_unicast(void *param, int param_size, u16 sensor_type,
 	struct nlmsghdr *nlh;
 	void *msg;
 	int ret = -1;
-	u16 nlmsg_type = (sensor_type << 8) | msg_type;
+	int daemon_sensor_type;
+	u16 nlmsg_type;
+
+	if (sensor_type >= MSG_SENSOR_MAX || msg_type >= MSG_TYPE_MAX)
+		return -EINVAL;
+
+	daemon_sensor_type = adsp_sensor_to_daemon(sensor_type);
+	if (daemon_sensor_type < 0)
+		return daemon_sensor_type;
+
+	nlmsg_type = (daemon_sensor_type << 8) | msg_type;
 
 	if (data->restrict_mode && msg_type == MSG_TYPE_SET_ACCEL_MOTOR) {
 		pr_err("[FACTORY] %s - restrict_mode\n", __func__);
@@ -374,11 +463,12 @@ int get_hall_angle_data(int32_t *raw_data)
 
 static int process_received_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 {
-	u16 sensor_type = nlh->nlmsg_type >> 8;
+	int sensor_type = adsp_sensor_from_daemon(nlh->nlmsg_type >> 8);
 	u16 msg_type = nlh->nlmsg_type & 0xff;
 
 	/* check the boundary to prevent memory attack */
-	if (msg_type >= MSG_TYPE_MAX || sensor_type >= MSG_SENSOR_MAX ||
+	if (msg_type >= MSG_TYPE_MAX || sensor_type < 0 ||
+		sensor_type >= MSG_SENSOR_MAX ||
 		nlh->nlmsg_len - (int32_t)sizeof(struct nlmsghdr) >
 	    	sizeof(int32_t) * msg_size[sensor_type]) {
 		pr_err("[FACTORY] %s %d, %d, %d\n", __func__, msg_type, sensor_type, nlh->nlmsg_len);
@@ -389,7 +479,8 @@ static int process_received_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 		pr_info("[FACTORY] %s - MSG_FACTORY_INIT_CMD\n", __func__);
 		accel_factory_init_work(data);
 #if IS_ENABLED(CONFIG_SUPPORT_DUAL_6AXIS)
-		sub_accel_factory_init_work(data);
+		if (adsp_sensor_to_daemon(MSG_ACCEL_SUB) >= 0)
+			sub_accel_factory_init_work(data);
 #endif
 #if IS_ENABLED(CONFIG_SUPPORT_DEVICE_MODE)
 		sns_device_mode_init_work();
@@ -465,6 +556,9 @@ static int __init factory_adsp_init(void)
 	int i;
 
 	pr_info("[FACTORY] %s\n", __func__);
+#if IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
+	adsp_factory_protocol_init();
+#endif
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 
 	for (i = 0; i < MSG_SENSOR_MAX; i++) {
