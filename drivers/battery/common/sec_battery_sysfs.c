@@ -302,6 +302,16 @@ static struct device_attribute sec_otg_attrs[] = {
 	SEC_OTG_ATTR(sec_type),
 };
 
+static bool sec_bat_attr_is_dual(ptrdiff_t offset)
+{
+#if IS_ENABLED(CONFIG_DUAL_BATTERY)
+	return offset == BATT_SUB_BATTERY_ID ||
+		(offset >= BATT_MAIN_VOLTAGE && offset <= BATT_SUB_PWR_MODE2);
+#else
+	return false;
+#endif
+}
+
 ssize_t sec_bat_show_attrs(struct device *dev,
 				  struct device_attribute *attr, char *buf)
 {
@@ -311,6 +321,10 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 	union power_supply_propval value = {0, };
 	int i = 0;
 	int ret = 0;
+
+	if (sec_bat_attr_is_dual(offset) &&
+	    !sec_bat_has_dual_battery(battery->pdata))
+		return -ENODATA;
 
 	switch (offset) {
 	case BATT_RESET_SOC:
@@ -1532,7 +1546,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 			snprintf(temp_buf, sizeof(temp_buf), "%d", pcisd->event_data[EVENT_DC_ERR]);
 			size = sizeof(temp_buf) - strlen(temp_buf);
 
-			for (j = EVENT_DC_ERR + 1; j < EVENT_DATA_MAX; j++) {
+			for (j = EVENT_DC_ERR + 1; j < sec_bat_cisd_event_count(battery->pdata); j++) {
 				snprintf(temp_buf+strlen(temp_buf), size, " %d", pcisd->event_data[j]);
 				size = sizeof(temp_buf) - strlen(temp_buf);
 			}
@@ -1550,14 +1564,15 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 				cisd_event_data_str[EVENT_DC_ERR], pcisd->event_data[EVENT_DC_ERR]);
 			size = sizeof(temp_buf) - strlen(temp_buf);
 
-			for (j = EVENT_DC_ERR + 1; j < EVENT_DATA_MAX; j++) {
+			for (j = EVENT_DC_ERR + 1; j < sec_bat_cisd_event_count(battery->pdata); j++) {
 				snprintf(temp_buf+strlen(temp_buf), size, ",\"%s\":\"%d\"",
-					cisd_event_data_str[j], pcisd->event_data[j]);
+					(!sec_bat_has_dual_battery(battery->pdata) && j == EVENT_POR_REINIT) ?
+					"POR_REINIT" : cisd_event_data_str[j], pcisd->event_data[j]);
 				size = sizeof(temp_buf) - strlen(temp_buf);
 			}
 
 			/* Clear Daily Event Data */
-			for (j = EVENT_DC_ERR; j < EVENT_DATA_MAX; j++)
+			for (j = EVENT_DC_ERR; j < sec_bat_cisd_event_count(battery->pdata); j++)
 				pcisd->event_data[j] = 0;
 
 			i += scnprintf(buf + i, PAGE_SIZE - i, "%s\n", temp_buf);
@@ -1639,27 +1654,26 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
 			       battery->display_test);
 		break;
+	case BATT_TEMP_TEST:
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	case BATT_TEMP_TEST:
-		i += scnprintf(buf + i, PAGE_SIZE - i, "%d %d %d %d %d\n",
-			battery->pdata->bat_thm_info.test,
-			battery->pdata->usb_thm_info.test,
-			battery->pdata->wpc_thm_info.test,
-			battery->pdata->chg_thm_info.test,
-			battery->pdata->sub_bat_thm_info.test);
-		break;
-#else
-	case BATT_TEMP_TEST:
-		i += scnprintf(buf + i, PAGE_SIZE - i, "%d %d %d %d %d %d %d\n",
-			battery->pdata->bat_thm_info.test,
-			battery->pdata->usb_thm_info.test,
-			battery->pdata->wpc_thm_info.test,
-			battery->pdata->chg_thm_info.test,
-			battery->pdata->dchg_thm_info.test,
-			battery->pdata->blk_thm_info.test,
-			battery->lrp_test);
-		break;
+		if (sec_bat_has_dual_battery(battery->pdata)) {
+			i += scnprintf(buf + i, PAGE_SIZE - i, "%d %d %d %d %d\n",
+				battery->pdata->bat_thm_info.test,
+				battery->pdata->usb_thm_info.test,
+				battery->pdata->wpc_thm_info.test,
+				battery->pdata->chg_thm_info.test,
+				battery->pdata->sub_bat_thm_info.test);
+		} else
 #endif
+			i += scnprintf(buf + i, PAGE_SIZE - i, "%d %d %d %d %d %d %d\n",
+				battery->pdata->bat_thm_info.test,
+				battery->pdata->usb_thm_info.test,
+				battery->pdata->wpc_thm_info.test,
+				battery->pdata->chg_thm_info.test,
+				battery->pdata->dchg_thm_info.test,
+				battery->pdata->blk_thm_info.test,
+				battery->lrp_test);
+		break;
 	case BATT_CURRENT_EVENT:
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
 			battery->current_event);
@@ -2020,6 +2034,10 @@ ssize_t sec_bat_store_attrs(
 #endif
 
 	union power_supply_propval value = {0, };
+
+	if (sec_bat_attr_is_dual(offset) &&
+	    !sec_bat_has_dual_battery(battery->pdata))
+		return -ENODATA;
 
 	switch (offset) {
 	case BATT_RESET_SOC:
@@ -3651,7 +3669,7 @@ ssize_t sec_bat_store_attrs(
 			const char *p = buf;
 
 			pr_info("%s: %s\n", __func__, buf);
-			for (i = EVENT_DC_ERR; i < EVENT_DATA_MAX; i++) {
+			for (i = EVENT_DC_ERR; i < sec_bat_cisd_event_count(battery->pdata); i++) {
 				if (sscanf(p, "%10d%n", &pcisd->event_data[i], &x) > 0) {
 					p += (size_t)x;
 				} else {
@@ -4237,10 +4255,15 @@ ssize_t sec_bat_store_attrs(
 
 int sec_bat_create_attrs(struct device *dev)
 {
+	struct power_supply *psy = dev_get_drvdata(dev);
+	struct sec_battery_info *battery = power_supply_get_drvdata(psy);
 	unsigned long i = 0;
 	int rc = 0;
 
 	for (i = 0; i < ARRAY_SIZE(sec_battery_attrs); i++) {
+		if (sec_bat_attr_is_dual(i) &&
+		    !sec_bat_has_dual_battery(battery->pdata))
+			continue;
 		rc = device_create_file(dev, &sec_battery_attrs[i]);
 		if (rc)
 			goto create_attrs_failed;

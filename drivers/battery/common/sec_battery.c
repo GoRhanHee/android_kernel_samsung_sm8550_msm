@@ -505,6 +505,9 @@ __visible_for_testing void sec_bat_divide_limiter_current(struct sec_battery_inf
 	unsigned int main_current = 0, sub_current = 0, main_current_rate = 0, sub_current_rate = 0;
 	union power_supply_propval value = {0, };
 
+	if (!sec_bat_has_dual_battery(battery->pdata))
+		return;
+
 	if (is_pd_apdo_wire_type(battery->cable_type) && battery->pd_list.now_isApdo) {
 		if (limiter_current < battery->pdata->charging_current[SEC_BATTERY_CABLE_PDIC_APDO].fast_charging_current)
 			limiter_current = battery->pdata->charging_current[SEC_BATTERY_CABLE_PDIC_APDO].fast_charging_current;
@@ -583,6 +586,9 @@ __visible_for_testing void sec_bat_set_limiter_current(struct sec_battery_info *
 {
 	union power_supply_propval value = {0, };
 
+	if (!sec_bat_has_dual_battery(battery->pdata))
+		return;
+
 	pr_info("%s: charge_m(%d), charge_s(%d)\n", __func__,
 		battery->main_current, battery->sub_current);
 
@@ -603,9 +609,11 @@ __visible_for_testing int set_charging_current(void *data, int v)
 	struct sec_battery_info *battery = data;
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	sec_bat_divide_limiter_current(battery, v);
-	if (battery->charging_current < v)
-		sec_bat_set_limiter_current(battery);
+	if (sec_bat_has_dual_battery(battery->pdata)) {
+		sec_bat_divide_limiter_current(battery, v);
+		if (battery->charging_current < v)
+			sec_bat_set_limiter_current(battery);
+	}
 #endif
 
 	value.intval = v;
@@ -623,20 +631,23 @@ __visible_for_testing int set_charging_current(void *data, int v)
 	}
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	if (battery->charging_current > v) {
-		if (!is_wireless_type(battery->cable_type))
-			sec_bat_set_limiter_current(battery);
+	if (sec_bat_has_dual_battery(battery->pdata)) {
+		if (battery->charging_current > v) {
+			if (!is_wireless_type(battery->cable_type))
+				sec_bat_set_limiter_current(battery);
+		}
 	}
 #endif
 	battery->charging_current = v;
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	pr_info("%s: power(%d), input(%d), charge(%d), charge_m(%d), charge_s(%d)\n", __func__,
-			battery->charge_power, battery->input_current, battery->charging_current, battery->main_current, battery->sub_current);
-#else
-	pr_info("%s: power(%d), input(%d), charge(%d)\n", __func__,
-			battery->charge_power, battery->input_current, battery->charging_current);
+	if (sec_bat_has_dual_battery(battery->pdata)) {
+		pr_info("%s: power(%d), input(%d), charge(%d), charge_m(%d), charge_s(%d)\n", __func__,
+				battery->charge_power, battery->input_current, battery->charging_current, battery->main_current, battery->sub_current);
+	} else
 #endif
+		pr_info("%s: power(%d), input(%d), charge(%d)\n", __func__,
+				battery->charge_power, battery->input_current, battery->charging_current);
 	return v;
 }
 EXPORT_SYMBOL_KUNIT(set_charging_current);
@@ -1291,26 +1302,28 @@ int sec_bat_set_charge(void * data, int chg_mode)
 		POWER_SUPPLY_EXT_PROP_CHARGING_ENABLED, val);
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	if ((battery->pdata->full_check_type_2nd == SEC_BATTERY_FULLCHARGED_FG_CURRENT) &&
-		(battery->charging_mode == SEC_BATTERY_CHARGING_NONE && battery->status == POWER_SUPPLY_STATUS_FULL)) {
-		/*
-		 * Enable supplement mode for 2nd charging done, should cut off charger then limiter sequence,
-		 * this case only for full_check_type_2nd is
-		 * SEC_BATTERY_FULLCHARGED_FG_CURRENT not SEC_BATTERY_FULLCHARGED_LIMITER
-		 */
-		val.intval = 1;
-		psy_do_property(battery->pdata->dual_battery_name, set,
-		POWER_SUPPLY_EXT_PROP_CHARGING_ENABLED, val);
-	} else if (!(battery->charging_mode == SEC_BATTERY_CHARGING_NONE && battery->status == POWER_SUPPLY_STATUS_FULL) &&
-				!(battery->charging_mode == SEC_BATTERY_CHARGING_NONE && battery->thermal_zone == BAT_THERMAL_WARM)) {
-		/*
-		 * Limiter should disable supplement mode to do battery balancing properly in case of
-		 * charging, discharging and buck off. But needs to disable supplement mode except
-		 * 2nd full charge done and swelling charging.
-		 */
-		val.intval = 0;
-		psy_do_property(battery->pdata->dual_battery_name, set,
-		POWER_SUPPLY_EXT_PROP_CHARGING_ENABLED, val);
+	if (sec_bat_has_dual_battery(battery->pdata)) {
+		if ((battery->pdata->full_check_type_2nd == SEC_BATTERY_FULLCHARGED_FG_CURRENT) &&
+			(battery->charging_mode == SEC_BATTERY_CHARGING_NONE && battery->status == POWER_SUPPLY_STATUS_FULL)) {
+			/*
+			 * Enable supplement mode for 2nd charging done, should cut off charger then limiter sequence,
+			 * this case only for full_check_type_2nd is
+			 * SEC_BATTERY_FULLCHARGED_FG_CURRENT not SEC_BATTERY_FULLCHARGED_LIMITER
+			 */
+			val.intval = 1;
+			psy_do_property(battery->pdata->dual_battery_name, set,
+			POWER_SUPPLY_EXT_PROP_CHARGING_ENABLED, val);
+		} else if (!(battery->charging_mode == SEC_BATTERY_CHARGING_NONE && battery->status == POWER_SUPPLY_STATUS_FULL) &&
+					!(battery->charging_mode == SEC_BATTERY_CHARGING_NONE && battery->thermal_zone == BAT_THERMAL_WARM)) {
+			/*
+			 * Limiter should disable supplement mode to do battery balancing properly in case of
+			 * charging, discharging and buck off. But needs to disable supplement mode except
+			 * 2nd full charge done and swelling charging.
+			 */
+			val.intval = 0;
+			psy_do_property(battery->pdata->dual_battery_name, set,
+			POWER_SUPPLY_EXT_PROP_CHARGING_ENABLED, val);
+		}
 	}
 #endif
 	return chg_mode;
@@ -1354,6 +1367,9 @@ static bool sec_bat_check_by_gpio(struct sec_battery_info *battery)
 	union power_supply_propval value = {0, };
 	bool ret = true;
 	int main_det = -1, sub_det = -1;
+
+	if (!sec_bat_has_dual_battery(battery->pdata))
+		return true;
 
 	value.intval = SEC_DUAL_BATTERY_MAIN;
 	psy_do_property(battery->pdata->dual_battery_name, get,
@@ -1469,6 +1485,9 @@ static void sec_bat_limiter_check(struct sec_battery_info *battery)
 	union power_supply_propval m_value = {0, }, s_value = {0, };
 	int main_enb, main_enb2, sub_enb;
 	int ret;
+
+	if (!sec_bat_has_dual_battery(battery->pdata))
+		return;
 
 	/* The health checks and GPIO recovery below are S2ASL01-specific. */
 	if (!sec_bat_limiter_is_s2asl01(battery->pdata->main_limiter_name) ||
@@ -2081,18 +2100,21 @@ __visible_for_testing bool sec_bat_check_recharge(struct sec_battery_info *batte
 		}
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-		if (battery->pdata->recharge_condition_type &
-			SEC_BATTERY_RECHARGE_CONDITION_LIMITER) {
-			int voltage = max(battery->voltage_pack_main, battery->voltage_pack_sub);
-			if (voltage <= recharging_voltage) {
-				dev_info(battery->dev, "%s: Re-charging by VPACK (%d)mV\n",
-					__func__, voltage);
-				goto check_recharge_check_count;
-			} else if (abs(battery->voltage_pack_main - battery->voltage_pack_sub) >
-				battery->pdata->force_recharge_margin) {
-				dev_info(battery->dev, "%s: Force Re-charging by VPACK diff(%d, %d)mV\n",
-					__func__, battery->voltage_pack_main, battery->voltage_pack_sub);
-				goto check_recharge_check_count;
+		if (sec_bat_has_dual_battery(battery->pdata)) {
+			if (battery->pdata->recharge_condition_type &
+				SEC_BATTERY_RECHARGE_CONDITION_LIMITER) {
+				int voltage = max(battery->voltage_pack_main, battery->voltage_pack_sub);
+
+				if (voltage <= recharging_voltage) {
+					dev_info(battery->dev, "%s: Re-charging by VPACK (%d)mV\n",
+						__func__, voltage);
+					goto check_recharge_check_count;
+				} else if (abs(battery->voltage_pack_main - battery->voltage_pack_sub) >
+					battery->pdata->force_recharge_margin) {
+					dev_info(battery->dev, "%s: Force Re-charging by VPACK diff(%d, %d)mV\n",
+						__func__, battery->voltage_pack_main, battery->voltage_pack_sub);
+					goto check_recharge_check_count;
+				}
 			}
 		}
 #endif
@@ -2164,9 +2186,11 @@ static bool sec_bat_voltage_check(struct sec_battery_info *battery)
 				battery->pdata->recharge_condition_soc : soc_ref;
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-		if (battery->pdata->recharge_condition_type &
-			SEC_BATTERY_RECHARGE_CONDITION_LIMITER) {
-			voltage_now = max(battery->voltage_pack_main, battery->voltage_pack_sub);
+		if (sec_bat_has_dual_battery(battery->pdata)) {
+			if (battery->pdata->recharge_condition_type &
+				SEC_BATTERY_RECHARGE_CONDITION_LIMITER) {
+				voltage_now = max(battery->voltage_pack_main, battery->voltage_pack_sub);
+			}
 		}
 #endif
 
@@ -2252,9 +2276,11 @@ __visible_for_testing bool sec_bat_set_aging_step(struct sec_battery_info *batte
 		battery->pdata->age_data[battery->pdata->age_step].full_condition_vcell;
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	value.intval = battery->pdata->age_step;
-	psy_do_property(battery->pdata->dual_battery_name, set,
-		POWER_SUPPLY_EXT_PROP_FULL_CONDITION, value);
+	if (sec_bat_has_dual_battery(battery->pdata)) {
+		value.intval = battery->pdata->age_step;
+		psy_do_property(battery->pdata->dual_battery_name, set,
+			POWER_SUPPLY_EXT_PROP_FULL_CONDITION, value);
+	}
 #endif
 #if defined(CONFIG_LSI_IFPMIC)
 	value.intval = battery->pdata->age_step;
@@ -2680,6 +2706,8 @@ bool sec_bat_check_full(struct sec_battery_info *battery, int full_check_type)
 		break;
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
 	case SEC_BATTERY_FULLCHARGED_LIMITER:
+		if (!sec_bat_has_dual_battery(battery->pdata))
+			return false;
 		value.intval = 1;
 		psy_do_property(battery->pdata->dual_battery_name, get,
 			POWER_SUPPLY_PROP_STATUS, value);
@@ -2950,13 +2978,15 @@ int sec_bat_get_inbat_vol_ocv(struct sec_battery_info *battery)
 		ret = ocv / 6;
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-		/* just for debug */
-		value.intval = SEC_DUAL_BATTERY_MAIN;
-		psy_do_property(pdata->dual_battery_name, get,
-				POWER_SUPPLY_PROP_VOLTAGE_AVG, value);
-		value.intval = SEC_DUAL_BATTERY_SUB;
-		psy_do_property(pdata->dual_battery_name, get,
-				POWER_SUPPLY_PROP_VOLTAGE_AVG, value);
+		if (sec_bat_has_dual_battery(battery->pdata)) {
+			/* just for debug */
+			value.intval = SEC_DUAL_BATTERY_MAIN;
+			psy_do_property(pdata->dual_battery_name, get,
+					POWER_SUPPLY_PROP_VOLTAGE_AVG, value);
+			value.intval = SEC_DUAL_BATTERY_SUB;
+			psy_do_property(pdata->dual_battery_name, get,
+					POWER_SUPPLY_PROP_VOLTAGE_AVG, value);
+		}
 #endif
 		break;
 	case SEC_BATTERY_OCV_FG_NOSRC_CHANGE:
@@ -3227,29 +3257,31 @@ void sec_bat_get_battery_info(struct sec_battery_info *battery)
 	}
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	/* get main pack voltage */
-	value.intval = SEC_DUAL_BATTERY_MAIN;
-	psy_do_property(battery->pdata->dual_battery_name, get,
-		POWER_SUPPLY_PROP_VOLTAGE_AVG, value);
-	battery->voltage_pack_main = value.intval;
+	if (sec_bat_has_dual_battery(battery->pdata)) {
+		/* get main pack voltage */
+		value.intval = SEC_DUAL_BATTERY_MAIN;
+		psy_do_property(battery->pdata->dual_battery_name, get,
+			POWER_SUPPLY_PROP_VOLTAGE_AVG, value);
+		battery->voltage_pack_main = value.intval;
 
-	/* get sub pack voltage */
-	value.intval = SEC_DUAL_BATTERY_SUB;
-	psy_do_property(battery->pdata->dual_battery_name, get,
-		POWER_SUPPLY_PROP_VOLTAGE_AVG, value);
-	battery->voltage_pack_sub = value.intval;
+		/* get sub pack voltage */
+		value.intval = SEC_DUAL_BATTERY_SUB;
+		psy_do_property(battery->pdata->dual_battery_name, get,
+			POWER_SUPPLY_PROP_VOLTAGE_AVG, value);
+		battery->voltage_pack_sub = value.intval;
 
-	/* get main current */
-	value.intval = SEC_DUAL_BATTERY_MAIN;
-	psy_do_property(battery->pdata->dual_battery_name, get,
-		POWER_SUPPLY_PROP_CURRENT_NOW, value);
-	battery->current_now_main = value.intval;
+		/* get main current */
+		value.intval = SEC_DUAL_BATTERY_MAIN;
+		psy_do_property(battery->pdata->dual_battery_name, get,
+			POWER_SUPPLY_PROP_CURRENT_NOW, value);
+		battery->current_now_main = value.intval;
 
-	/* get sub current */
-	value.intval = SEC_DUAL_BATTERY_SUB;
-	psy_do_property(battery->pdata->dual_battery_name, get,
-		POWER_SUPPLY_PROP_CURRENT_NOW, value);
-	battery->current_now_sub = value.intval;
+		/* get sub current */
+		value.intval = SEC_DUAL_BATTERY_SUB;
+		psy_do_property(battery->pdata->dual_battery_name, get,
+			POWER_SUPPLY_PROP_CURRENT_NOW, value);
+		battery->current_now_sub = value.intval;
+	}
 #endif
 
 	value.intval = SEC_BATTERY_CURRENT_MA;
@@ -3310,38 +3342,42 @@ void sec_bat_get_battery_info(struct sec_battery_info *battery)
 
 	/* voltage information */
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	sprintf(str, "%s:Vnow(%dmV),Vavg(%dmV),Vmp(%dmV),Vsp(%dmV),", __func__,
-		battery->voltage_now, battery->voltage_avg,
-		battery->voltage_pack_main, battery->voltage_pack_sub
-	);
-#else
-	sprintf(str, "%s:Vnow(%dmV),Vavg(%dmV),", __func__,
-		battery->voltage_now, battery->voltage_avg
-	);
+	if (sec_bat_has_dual_battery(battery->pdata)) {
+		sprintf(str, "%s:Vnow(%dmV),Vavg(%dmV),Vmp(%dmV),Vsp(%dmV),", __func__,
+			battery->voltage_now, battery->voltage_avg,
+			battery->voltage_pack_main, battery->voltage_pack_sub
+		);
+	} else
 #endif
+		sprintf(str, "%s:Vnow(%dmV),Vavg(%dmV),", __func__,
+			battery->voltage_now, battery->voltage_avg
+		);
 
 	/* current information */
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	sprintf(str + strlen(str), "Inow(%dmA),Iavg(%dmA),Isysavg(%dmA),Inow_m(%dmA),Inow_s(%dmA),Imax(%dmA),Ichg(%dmA),Ichg_m(%dmA),Ichg_s(%dmA),SOC(%d%%),",
-		battery->current_now, battery->current_avg,
-		battery->current_sys_avg, battery->current_now_main,
-		battery->current_now_sub, battery->current_max,
-		battery->charging_current, battery->main_current,
-		battery->sub_current, battery->capacity
-	);
-#else
-	sprintf(str + strlen(str), "Inow(%dmA),Iavg(%dmA),Isysavg(%dmA),Imax(%dmA),Ichg(%dmA),SOC(%d%%),",
-		battery->current_now, battery->current_avg,
-		battery->current_sys_avg, battery->current_max,
-		battery->charging_current, battery->capacity
-	);
+	if (sec_bat_has_dual_battery(battery->pdata)) {
+		sprintf(str + strlen(str), "Inow(%dmA),Iavg(%dmA),Isysavg(%dmA),Inow_m(%dmA),Inow_s(%dmA),Imax(%dmA),Ichg(%dmA),Ichg_m(%dmA),Ichg_s(%dmA),SOC(%d%%),",
+			battery->current_now, battery->current_avg,
+			battery->current_sys_avg, battery->current_now_main,
+			battery->current_now_sub, battery->current_max,
+			battery->charging_current, battery->main_current,
+			battery->sub_current, battery->capacity
+		);
+	} else
 #endif
+		sprintf(str + strlen(str), "Inow(%dmA),Iavg(%dmA),Isysavg(%dmA),Imax(%dmA),Ichg(%dmA),SOC(%d%%),",
+			battery->current_now, battery->current_avg,
+			battery->current_sys_avg, battery->current_max,
+			battery->charging_current, battery->capacity
+		);
 
 	/* temperature information */
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	sprintf(str + strlen(str), "Tsub(%d),",
-		battery->sub_bat_temp
-	);
+	if (sec_bat_has_dual_battery(battery->pdata)) {
+		sprintf(str + strlen(str), "Tsub(%d),",
+			battery->sub_bat_temp
+		);
+	}
 #endif
 	sprintf(str + strlen(str), "Tbat(%d),Tusb(%d),Tchg(%d),Twpc(%d),Tblkt(%d),Tlrp(%d),",
 		battery->temperature, battery->usb_temp,
@@ -4274,7 +4310,8 @@ static void sec_bat_monitor_work(struct work_struct *work)
 #endif
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY) && !defined(CONFIG_SEC_FACTORY)
-	sec_bat_limiter_check(battery);
+	if (sec_bat_has_dual_battery(battery->pdata))
+		sec_bat_limiter_check(battery);
 #endif
 
 continue_monitor:
@@ -6058,13 +6095,13 @@ static int sec_bat_set_property(struct power_supply *psy,
 			pr_info("%s: POWER_SUPPLY_EXT_PROP_ABNORMAL_TA(%d)\n", __func__, val->intval);
 			sec_bat_set_abnormal_ta_fcc(battery, true);
 			break;
-#if !IS_ENABLED(CONFIG_DUAL_BATTERY)
 		case POWER_SUPPLY_EXT_PROP_POR_REINIT_COUNT:
+			if (sec_bat_has_dual_battery(battery->pdata))
+				return -EOPNOTSUPP;
 			battery->cisd.event_data[EVENT_POR_REINIT]++;
 			pr_info("%s: POR_REINIT_COUNT (%d)\n",
 				__func__, battery->cisd.event_data[EVENT_POR_REINIT]);
 			break;
-#endif
 		default:
 			return -EINVAL;
 		}
@@ -6340,6 +6377,8 @@ static int sec_bat_get_property(struct power_supply *psy,
 			break;
 #if IS_ENABLED(CONFIG_DUAL_BATTERY) && IS_ENABLED(CONFIG_DIRECT_CHARGING)
 		case POWER_SUPPLY_EXT_PROP_DIRECT_VBAT_CHECK:
+			if (!sec_bat_has_dual_battery(battery->pdata))
+				return -EOPNOTSUPP;
 			pr_info("%s : mc:%dmV, sc:%dmV\n", __func__,
 				battery->voltage_pack_main, battery->voltage_pack_sub);
 			if ((battery->voltage_pack_main >= battery->pdata->sc_vbat_thresh) ||
@@ -6370,6 +6409,8 @@ static int sec_bat_get_property(struct power_supply *psy,
 			val->intval = battery->thermal_zone;
 			break;
 		case POWER_SUPPLY_EXT_PROP_SUB_TEMP:
+			if (!sec_bat_has_dual_battery(battery->pdata))
+				return -ENODATA;
 			val->intval = battery->sub_bat_temp;
 			break;
 		case POWER_SUPPLY_EXT_PROP_MIX_LIMIT:
@@ -7077,18 +7118,20 @@ __visible_for_testing int sec_bat_cable_check(struct sec_battery_info *battery,
 	}
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY) && defined(CONFIG_SEC_FACTORY)
-	if (!sec_bat_check_by_gpio(battery)) {
-		if (attached_dev == ATTACHED_DEV_JIG_UART_OFF_MUIC ||
-			attached_dev == ATTACHED_DEV_JIG_USB_ON_MUIC) {
-			pr_info("%s No Main or Sub Battery, 301k or 523k with FACTORY\n", __func__);
-			gpio_direction_output(battery->pdata->sub_bat_enb_gpio, 1);
-		}
-	} else {
-		if (attached_dev == ATTACHED_DEV_JIG_UART_OFF_MUIC ||
-			attached_dev == ATTACHED_DEV_JIG_UART_ON_MUIC ||
-			attached_dev == ATTACHED_DEV_JIG_USB_ON_MUIC) {
-			pr_info("%s 301k or 523k or 619k with FACTORY\n", __func__);
-			gpio_direction_output(battery->pdata->sub_bat_enb_gpio, 0);
+	if (sec_bat_has_dual_battery(battery->pdata)) {
+		if (!sec_bat_check_by_gpio(battery)) {
+			if (attached_dev == ATTACHED_DEV_JIG_UART_OFF_MUIC ||
+				attached_dev == ATTACHED_DEV_JIG_USB_ON_MUIC) {
+				pr_info("%s No Main or Sub Battery, 301k or 523k with FACTORY\n", __func__);
+				gpio_direction_output(battery->pdata->sub_bat_enb_gpio, 1);
+			}
+		} else {
+			if (attached_dev == ATTACHED_DEV_JIG_UART_OFF_MUIC ||
+				attached_dev == ATTACHED_DEV_JIG_UART_ON_MUIC ||
+				attached_dev == ATTACHED_DEV_JIG_USB_ON_MUIC) {
+				pr_info("%s 301k or 523k or 619k with FACTORY\n", __func__);
+				gpio_direction_output(battery->pdata->sub_bat_enb_gpio, 0);
+			}
 		}
 	}
 #endif

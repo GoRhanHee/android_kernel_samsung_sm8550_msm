@@ -66,7 +66,8 @@ bool sec_bat_cisd_check(struct sec_battery_info *battery)
 	}
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	voltage = max(battery->voltage_pack_main, battery->voltage_pack_sub);
+	if (sec_bat_has_dual_battery(battery->pdata))
+		voltage = max(battery->voltage_pack_main, battery->voltage_pack_sub);
 #endif
 
 	if ((battery->status == POWER_SUPPLY_STATUS_CHARGING) ||

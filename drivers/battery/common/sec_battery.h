@@ -824,6 +824,22 @@ typedef struct sec_battery_platform_data {
 	unsigned int adc_type[];
 } sec_battery_platform_data_t;
 
+static inline bool sec_bat_has_dual_battery(const sec_battery_platform_data_t *pdata)
+{
+#if IS_ENABLED(CONFIG_DUAL_BATTERY)
+	return pdata->dual_battery_name && pdata->dual_battery_name[0];
+#else
+	return false;
+#endif
+}
+
+#if defined(CONFIG_BATTERY_CISD)
+static inline int sec_bat_cisd_event_count(const sec_battery_platform_data_t *pdata)
+{
+	return sec_bat_has_dual_battery(pdata) ? EVENT_DATA_MAX : EVENT_POR_REINIT + 1;
+}
+#endif
+
 struct sec_ttf_data;
 
 struct sec_eoc_info {

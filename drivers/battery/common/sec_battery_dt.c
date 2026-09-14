@@ -1480,45 +1480,47 @@ int sec_bat_parse_dt(struct device *dev,
 		of_property_read_bool(np, "battery,abnormal_wpc_check");
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	ret = of_property_read_u32(np, "battery,limiter_main_warm_current",
-					&pdata->limiter_main_warm_current);
-	if (ret)
-		pr_info("%s: limiter_main_warm_current is Empty\n", __func__);
+	if (sec_bat_dt_has_dual_battery()) {
+		ret = of_property_read_u32(np, "battery,limiter_main_warm_current",
+						&pdata->limiter_main_warm_current);
+		if (ret)
+			pr_info("%s: limiter_main_warm_current is Empty\n", __func__);
 
-	ret = of_property_read_u32(np, "battery,limiter_sub_warm_current",
-					&pdata->limiter_sub_warm_current);
-	if (ret)
-		pr_info("%s: limiter_sub_warm_current is Empty\n", __func__);
+		ret = of_property_read_u32(np, "battery,limiter_sub_warm_current",
+						&pdata->limiter_sub_warm_current);
+		if (ret)
+			pr_info("%s: limiter_sub_warm_current is Empty\n", __func__);
 
-	ret = of_property_read_u32(np, "battery,limiter_main_cool1_current",
-					&pdata->limiter_main_cool1_current);
-	if (ret)
-		pr_info("%s: limiter_main_cool1_current is Empty\n", __func__);
+		ret = of_property_read_u32(np, "battery,limiter_main_cool1_current",
+						&pdata->limiter_main_cool1_current);
+		if (ret)
+			pr_info("%s: limiter_main_cool1_current is Empty\n", __func__);
 
-	ret = of_property_read_u32(np, "battery,limiter_sub_cool1_current",
-					&pdata->limiter_sub_cool1_current);
-	if (ret)
-		pr_info("%s: limiter_sub_cool1_current is Empty\n", __func__);
+		ret = of_property_read_u32(np, "battery,limiter_sub_cool1_current",
+						&pdata->limiter_sub_cool1_current);
+		if (ret)
+			pr_info("%s: limiter_sub_cool1_current is Empty\n", __func__);
 
-	ret = of_property_read_u32(np, "battery,limiter_main_cool2_current",
-					&pdata->limiter_main_cool2_current);
-	if (ret)
-		pr_info("%s: limiter_main_cool2_current is Empty\n", __func__);
+		ret = of_property_read_u32(np, "battery,limiter_main_cool2_current",
+						&pdata->limiter_main_cool2_current);
+		if (ret)
+			pr_info("%s: limiter_main_cool2_current is Empty\n", __func__);
 
-	ret = of_property_read_u32(np, "battery,limiter_sub_cool2_current",
-					&pdata->limiter_sub_cool2_current);
-	if (ret)
-		pr_info("%s: limiter_sub_cool2_current is Empty\n", __func__);
+		ret = of_property_read_u32(np, "battery,limiter_sub_cool2_current",
+						&pdata->limiter_sub_cool2_current);
+		if (ret)
+			pr_info("%s: limiter_sub_cool2_current is Empty\n", __func__);
 
-	ret = of_property_read_u32(np, "battery,limiter_main_cool3_current",
-					&pdata->limiter_main_cool3_current);
-	if (ret)
-		pr_info("%s: limiter_main_cool3_current is Empty\n", __func__);
+		ret = of_property_read_u32(np, "battery,limiter_main_cool3_current",
+						&pdata->limiter_main_cool3_current);
+		if (ret)
+			pr_info("%s: limiter_main_cool3_current is Empty\n", __func__);
 
-	ret = of_property_read_u32(np, "battery,limiter_sub_cool3_current",
-					&pdata->limiter_sub_cool3_current);
-	if (ret)
-		pr_info("%s: limiter_sub_cool3_current is Empty\n", __func__);
+		ret = of_property_read_u32(np, "battery,limiter_sub_cool3_current",
+						&pdata->limiter_sub_cool3_current);
+		if (ret)
+			pr_info("%s: limiter_sub_cool3_current is Empty\n", __func__);
+	}
 #endif
 
 	ret = of_property_read_u32(np, "battery,high_temp_float", &temp);
@@ -2074,170 +2076,172 @@ int sec_bat_parse_dt(struct device *dev,
 	}
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	ret = of_property_read_string(np,
-		"battery,dual_battery_name", (char const **)&pdata->dual_battery_name);
-	if (ret)
-		pr_info("%s: Dual battery name is Empty\n", __func__);
-
-	np = of_find_node_by_name(NULL, "sec-dual-battery");
-	if (!np) {
-		pr_info("%s: np NULL\n", __func__);
-	} else {
-		/* zone1 current ratio, 0C ~ 0.4C */
-		ret = of_property_read_u32(np, "battery,zone1_limiter_current",
-				&pdata->zone1_limiter_current);
-		if (ret) {
-			pr_err("%s: zone1_limiter_current is Empty\n", __func__);
-			pdata->zone1_limiter_current = 100;
-		}
-		ret = of_property_read_u32(np, "battery,main_zone1_current_rate",
-				&pdata->main_zone1_current_rate);
-		if (ret) {
-			pr_err("%s: main_zone1_current_rate is Empty\n", __func__);
-			pdata->main_zone1_current_rate = 50;
-		}
-		ret = of_property_read_u32(np, "battery,sub_zone1_current_rate",
-				&pdata->sub_zone1_current_rate);
-		if (ret) {
-			pr_err("%s: sub_zone1_current_rate is Empty\n", __func__);
-			pdata->sub_zone1_current_rate = 60;
-		}
-		/* zone2 current ratio, 0.4C ~ 1.1C */
-		ret = of_property_read_u32(np, "battery,zone2_limiter_current",
-				&pdata->zone2_limiter_current);
-		if (ret) {
-			pr_err("%s: zone2_limiter_current is Empty\n", __func__);
-			pdata->zone2_limiter_current = 1200;
-		}
-		ret = of_property_read_u32(np, "battery,main_zone2_current_rate",
-				&pdata->main_zone2_current_rate);
-		if (ret) {
-			pr_err("%s: main_zone2_current_rate is Empty\n", __func__);
-			pdata->main_zone2_current_rate = 50;
-		}
-		ret = of_property_read_u32(np, "battery,sub_zone2_current_rate",
-				&pdata->sub_zone2_current_rate);
-		if (ret) {
-			pr_err("%s: sub_zone2_current_rate is Empty\n", __func__);
-			pdata->sub_zone2_current_rate = 60;
-		}
-		/* zone3 current ratio, 1.1C ~ MAX */
-		ret = of_property_read_u32(np, "battery,zone3_limiter_current",
-				&pdata->zone3_limiter_current);
-		if (ret) {
-			pr_err("%s: zone3_limiter_current is Empty\n", __func__);
-			pdata->zone3_limiter_current = 3000;
-		}
-		ret = of_property_read_u32(np, "battery,main_zone3_current_rate",
-				&pdata->main_zone3_current_rate);
-		if (ret) {
-			pr_err("%s: main_zone3_current_rate is Empty\n", __func__);
-			pdata->main_zone3_current_rate = pdata->main_zone2_current_rate;
-		}
-		ret = of_property_read_u32(np, "battery,sub_zone3_current_rate",
-				&pdata->sub_zone3_current_rate);
-		if (ret) {
-			pr_err("%s: sub_zone3_current_rate is Empty\n", __func__);
-			pdata->sub_zone3_current_rate = pdata->sub_zone2_current_rate;
-		}
-		ret = of_property_read_u32(np, "battery,force_recharge_margin",
-				&pdata->force_recharge_margin);
-		if (ret) {
-			pr_err("%s: force_recharge_margin is Empty\n", __func__);
-			pdata->force_recharge_margin = 150;
-		}
-		ret = of_property_read_u32(np, "battery,max_main_limiter_current",
-				&pdata->max_main_limiter_current);
-		if (ret) {
-			pr_err("%s: max_main_limiter_current is Empty\n", __func__);
-			pdata->max_main_limiter_current = 1550;
-		}
-		ret = of_property_read_u32(np, "battery,min_main_limiter_current",
-				&pdata->min_main_limiter_current);
-		if (ret) {
-			pr_err("%s: min_main_limiter_current is Empty\n", __func__);
-			pdata->min_main_limiter_current = 450;
-		}
-		ret = of_property_read_u32(np, "battery,max_sub_limiter_current",
-				&pdata->max_sub_limiter_current);
-		if (ret) {
-			pr_err("%s: max_sub_limiter_current is Empty\n", __func__);
-			pdata->max_sub_limiter_current = 1300;
-		}
-		ret = of_property_read_u32(np, "battery,min_sub_limiter_current",
-				&pdata->min_sub_limiter_current);
-		if (ret) {
-			pr_err("%s: min_sub_limiter_current is Empty\n", __func__);
-			pdata->min_sub_limiter_current = 450;
-		}
-		pdata->main_fto = of_property_read_bool(np, "battery,main_fto");
-		pdata->sub_fto = of_property_read_bool(np, "battery,sub_fto");
-
-		if (pdata->main_fto) {
-			ret = of_property_read_u32(np, "battery,main_fto_current_thresh",
-					&pdata->main_fto_current_thresh);
-			if (ret) {
-				pr_err("%s: main_fto_current_thresh is Empty\n", __func__);
-				pdata->main_fto_current_thresh = pdata->zone3_limiter_current;
-			}
-		}
-		if (pdata->sub_fto) {
-			ret = of_property_read_u32(np, "battery,sub_fto_current_thresh",
-					&pdata->sub_fto_current_thresh);
-			if (ret) {
-				pr_err("%s: sub_fto_current_thresh is Empty\n", __func__);
-				pdata->sub_fto_current_thresh = pdata->zone3_limiter_current;
-			}
-		}
-
-		pr_info("%s : main ratio:%d(zn1) %d(zn2) %d(zn3), sub ratio:%d(zn1) %d(zn2) %d(zn3), recharge marging:%d, "
-				"max main curr:%d, min main curr:%d, max sub curr:%d, min sub curr:%d, main_fto:%d, sub_fto:%d, "
-				"main_fto_curr:%d, sub_fto_curr:%d\n",
-				__func__, pdata->main_zone1_current_rate, pdata->main_zone2_current_rate, pdata->main_zone3_current_rate,
-				pdata->sub_zone1_current_rate, pdata->sub_zone2_current_rate, pdata->sub_zone3_current_rate,
-				pdata->force_recharge_margin, pdata->max_main_limiter_current, pdata->min_main_limiter_current,
-				pdata->max_sub_limiter_current, pdata->min_sub_limiter_current, pdata->main_fto, pdata->sub_fto,
-				pdata->main_fto_current_thresh, pdata->sub_fto_current_thresh);
-
-		ret = of_property_read_string(np, "battery,main_current_limiter",
-				(char const **)&battery->pdata->main_limiter_name);
+	if (sec_bat_dt_has_dual_battery()) {
+		ret = of_property_read_string(np,
+			"battery,dual_battery_name", (char const **)&pdata->dual_battery_name);
 		if (ret)
-			pr_err("%s: main_current_limiter is Empty\n", __func__);
-		else {
-			np = of_find_node_by_name(NULL, battery->pdata->main_limiter_name);
-			if (!np) {
-				pr_info("%s: main_limiter_name is Empty\n", __func__);
-			} else {
-				/* MAIN_BATTERY_SW_EN */
-				ret = pdata->main_bat_enb_gpio = of_get_named_gpio(np, "limiter,main_bat_enb_gpio", 0);
-				if (ret < 0)
-					pr_info("%s : can't get main_bat_enb_gpio\n", __func__);
+			pr_info("%s: Dual battery name is Empty\n", __func__);
 
-				/* MAIN_BATTERY_SW_EN2 */
-				ret = pdata->main_bat_enb2_gpio = of_get_named_gpio(np, "limiter,main_bat_enb2_gpio", 0);
-				if (ret < 0)
-					pr_info("%s : can't get main_bat_enb2_gpio\n", __func__);
-			}
-		}
 		np = of_find_node_by_name(NULL, "sec-dual-battery");
+		if (!np) {
+			pr_info("%s: np NULL\n", __func__);
+		} else {
+			/* zone1 current ratio, 0C ~ 0.4C */
+			ret = of_property_read_u32(np, "battery,zone1_limiter_current",
+					&pdata->zone1_limiter_current);
+			if (ret) {
+				pr_err("%s: zone1_limiter_current is Empty\n", __func__);
+				pdata->zone1_limiter_current = 100;
+			}
+			ret = of_property_read_u32(np, "battery,main_zone1_current_rate",
+					&pdata->main_zone1_current_rate);
+			if (ret) {
+				pr_err("%s: main_zone1_current_rate is Empty\n", __func__);
+				pdata->main_zone1_current_rate = 50;
+			}
+			ret = of_property_read_u32(np, "battery,sub_zone1_current_rate",
+					&pdata->sub_zone1_current_rate);
+			if (ret) {
+				pr_err("%s: sub_zone1_current_rate is Empty\n", __func__);
+				pdata->sub_zone1_current_rate = 60;
+			}
+			/* zone2 current ratio, 0.4C ~ 1.1C */
+			ret = of_property_read_u32(np, "battery,zone2_limiter_current",
+					&pdata->zone2_limiter_current);
+			if (ret) {
+				pr_err("%s: zone2_limiter_current is Empty\n", __func__);
+				pdata->zone2_limiter_current = 1200;
+			}
+			ret = of_property_read_u32(np, "battery,main_zone2_current_rate",
+					&pdata->main_zone2_current_rate);
+			if (ret) {
+				pr_err("%s: main_zone2_current_rate is Empty\n", __func__);
+				pdata->main_zone2_current_rate = 50;
+			}
+			ret = of_property_read_u32(np, "battery,sub_zone2_current_rate",
+					&pdata->sub_zone2_current_rate);
+			if (ret) {
+				pr_err("%s: sub_zone2_current_rate is Empty\n", __func__);
+				pdata->sub_zone2_current_rate = 60;
+			}
+			/* zone3 current ratio, 1.1C ~ MAX */
+			ret = of_property_read_u32(np, "battery,zone3_limiter_current",
+					&pdata->zone3_limiter_current);
+			if (ret) {
+				pr_err("%s: zone3_limiter_current is Empty\n", __func__);
+				pdata->zone3_limiter_current = 3000;
+			}
+			ret = of_property_read_u32(np, "battery,main_zone3_current_rate",
+					&pdata->main_zone3_current_rate);
+			if (ret) {
+				pr_err("%s: main_zone3_current_rate is Empty\n", __func__);
+				pdata->main_zone3_current_rate = pdata->main_zone2_current_rate;
+			}
+			ret = of_property_read_u32(np, "battery,sub_zone3_current_rate",
+					&pdata->sub_zone3_current_rate);
+			if (ret) {
+				pr_err("%s: sub_zone3_current_rate is Empty\n", __func__);
+				pdata->sub_zone3_current_rate = pdata->sub_zone2_current_rate;
+			}
+			ret = of_property_read_u32(np, "battery,force_recharge_margin",
+					&pdata->force_recharge_margin);
+			if (ret) {
+				pr_err("%s: force_recharge_margin is Empty\n", __func__);
+				pdata->force_recharge_margin = 150;
+			}
+			ret = of_property_read_u32(np, "battery,max_main_limiter_current",
+					&pdata->max_main_limiter_current);
+			if (ret) {
+				pr_err("%s: max_main_limiter_current is Empty\n", __func__);
+				pdata->max_main_limiter_current = 1550;
+			}
+			ret = of_property_read_u32(np, "battery,min_main_limiter_current",
+					&pdata->min_main_limiter_current);
+			if (ret) {
+				pr_err("%s: min_main_limiter_current is Empty\n", __func__);
+				pdata->min_main_limiter_current = 450;
+			}
+			ret = of_property_read_u32(np, "battery,max_sub_limiter_current",
+					&pdata->max_sub_limiter_current);
+			if (ret) {
+				pr_err("%s: max_sub_limiter_current is Empty\n", __func__);
+				pdata->max_sub_limiter_current = 1300;
+			}
+			ret = of_property_read_u32(np, "battery,min_sub_limiter_current",
+					&pdata->min_sub_limiter_current);
+			if (ret) {
+				pr_err("%s: min_sub_limiter_current is Empty\n", __func__);
+				pdata->min_sub_limiter_current = 450;
+			}
+			pdata->main_fto = of_property_read_bool(np, "battery,main_fto");
+			pdata->sub_fto = of_property_read_bool(np, "battery,sub_fto");
 
-		ret = of_property_read_string(np, "battery,sub_current_limiter",
-				(char const **)&battery->pdata->sub_limiter_name);
-		if (ret)
-			pr_err("%s: sub_current_limiter is Empty\n", __func__);
-		else {
-			np = of_find_node_by_name(NULL, battery->pdata->sub_limiter_name);
-			if (!np) {
-				pr_info("%s: sub_limiter_name is Empty\n", __func__);
-			} else {
-				/* SUB_BATTERY_SW_EN */
-				ret = pdata->sub_bat_enb_gpio = of_get_named_gpio(np, "limiter,sub_bat_enb_gpio", 0);
-				if (ret < 0)
-					pr_info("%s : can't get sub_bat_enb_gpio\n", __func__);
+			if (pdata->main_fto) {
+				ret = of_property_read_u32(np, "battery,main_fto_current_thresh",
+						&pdata->main_fto_current_thresh);
+				if (ret) {
+					pr_err("%s: main_fto_current_thresh is Empty\n", __func__);
+					pdata->main_fto_current_thresh = pdata->zone3_limiter_current;
+				}
+			}
+			if (pdata->sub_fto) {
+				ret = of_property_read_u32(np, "battery,sub_fto_current_thresh",
+						&pdata->sub_fto_current_thresh);
+				if (ret) {
+					pr_err("%s: sub_fto_current_thresh is Empty\n", __func__);
+					pdata->sub_fto_current_thresh = pdata->zone3_limiter_current;
+				}
+			}
+
+			pr_info("%s : main ratio:%d(zn1) %d(zn2) %d(zn3), sub ratio:%d(zn1) %d(zn2) %d(zn3), recharge marging:%d, "
+					"max main curr:%d, min main curr:%d, max sub curr:%d, min sub curr:%d, main_fto:%d, sub_fto:%d, "
+					"main_fto_curr:%d, sub_fto_curr:%d\n",
+					__func__, pdata->main_zone1_current_rate, pdata->main_zone2_current_rate, pdata->main_zone3_current_rate,
+					pdata->sub_zone1_current_rate, pdata->sub_zone2_current_rate, pdata->sub_zone3_current_rate,
+					pdata->force_recharge_margin, pdata->max_main_limiter_current, pdata->min_main_limiter_current,
+					pdata->max_sub_limiter_current, pdata->min_sub_limiter_current, pdata->main_fto, pdata->sub_fto,
+					pdata->main_fto_current_thresh, pdata->sub_fto_current_thresh);
+
+			ret = of_property_read_string(np, "battery,main_current_limiter",
+					(char const **)&battery->pdata->main_limiter_name);
+			if (ret)
+				pr_err("%s: main_current_limiter is Empty\n", __func__);
+			else {
+				np = of_find_node_by_name(NULL, battery->pdata->main_limiter_name);
+				if (!np) {
+					pr_info("%s: main_limiter_name is Empty\n", __func__);
+				} else {
+					/* MAIN_BATTERY_SW_EN */
+					ret = pdata->main_bat_enb_gpio = of_get_named_gpio(np, "limiter,main_bat_enb_gpio", 0);
+					if (ret < 0)
+						pr_info("%s : can't get main_bat_enb_gpio\n", __func__);
+
+					/* MAIN_BATTERY_SW_EN2 */
+					ret = pdata->main_bat_enb2_gpio = of_get_named_gpio(np, "limiter,main_bat_enb2_gpio", 0);
+					if (ret < 0)
+						pr_info("%s : can't get main_bat_enb2_gpio\n", __func__);
+				}
+			}
+			np = of_find_node_by_name(NULL, "sec-dual-battery");
+
+			ret = of_property_read_string(np, "battery,sub_current_limiter",
+					(char const **)&battery->pdata->sub_limiter_name);
+			if (ret)
+				pr_err("%s: sub_current_limiter is Empty\n", __func__);
+			else {
+				np = of_find_node_by_name(NULL, battery->pdata->sub_limiter_name);
+				if (!np) {
+					pr_info("%s: sub_limiter_name is Empty\n", __func__);
+				} else {
+					/* SUB_BATTERY_SW_EN */
+					ret = pdata->sub_bat_enb_gpio = of_get_named_gpio(np, "limiter,sub_bat_enb_gpio", 0);
+					if (ret < 0)
+						pr_info("%s : can't get sub_bat_enb_gpio\n", __func__);
+				}
 			}
 		}
+		np = of_find_node_by_name(NULL, "battery");
 	}
-	np = of_find_node_by_name(NULL, "battery");
 #endif
 
 #if defined(CONFIG_BATTERY_CISD)

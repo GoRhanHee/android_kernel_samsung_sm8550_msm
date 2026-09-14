@@ -265,6 +265,7 @@ struct max77705_fuelgauge_data {
 
 	int cable_type;
 	bool is_charging;
+	bool dual_battery;
 
 	/* HW-dedicated fuel gauge info structure
 	 * used in individual fuel gauge file only

@@ -58,7 +58,8 @@ int sec_bat_get_high_priority_temp(struct sec_battery_info *battery)
 	int priority_temp = battery->temperature;
 	int standard_temp = 250;
 
-	if (battery->pdata->sub_bat_thm_info.check_type == SEC_BATTERY_TEMP_CHECK_NONE)
+	if (!sec_bat_has_dual_battery(battery->pdata) ||
+	    battery->pdata->sub_bat_thm_info.check_type == SEC_BATTERY_TEMP_CHECK_NONE)
 		return battery->temperature;
 
 	if ((battery->temperature > standard_temp) && (battery->sub_bat_temp > standard_temp)) {
@@ -1280,7 +1281,8 @@ int sec_usb_temp_gap_check(struct sec_battery_info *battery,
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
 	/* select low temp thermistor */
-	if (battery->temperature > battery->sub_bat_temp)
+	if (sec_bat_has_dual_battery(battery->pdata) &&
+	    battery->temperature > battery->sub_bat_temp)
 		bat_thm = battery->sub_bat_temp;
 #endif
 	if (usb_temp > bat_thm)
@@ -1412,7 +1414,8 @@ int sec_usb_protection(struct sec_battery_info *battery)
 	}
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
 	/* select low temp thermistor */
-	if (thm2_temp > battery->sub_bat_temp)
+	if (sec_bat_has_dual_battery(battery->pdata) &&
+	    thm2_temp > battery->sub_bat_temp)
 		thm2_temp = battery->sub_bat_temp;
 #endif
 
@@ -1889,7 +1892,8 @@ void sec_bat_thermal_check(struct sec_battery_info *battery)
 				int v_ref = battery->pdata->high_temp_float - battery->pdata->buck_recovery_margin;
 				int voltage = battery->voltage_now;
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-				voltage = max(battery->voltage_pack_main, battery->voltage_pack_sub);
+				if (sec_bat_has_dual_battery(battery->pdata))
+					voltage = max(battery->voltage_pack_main, battery->voltage_pack_sub);
 #endif
 
 				if (get_sec_voter_status(battery->chgen_vote, VOTER_SWELLING, &voter_status) < 0)
@@ -1902,10 +1906,12 @@ void sec_bat_thermal_check(struct sec_battery_info *battery)
 						sec_vote(battery->chgen_vote, VOTER_SWELLING, true,
 							SEC_BAT_CHG_MODE_CHARGING_OFF);
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-						/* Enable supplement mode for swelling full charging done, should cut off charger then limiter sequence */
-						val.intval = 1;
-						psy_do_property(battery->pdata->dual_battery_name, set,
-							POWER_SUPPLY_EXT_PROP_CHARGING_ENABLED, val);
+						/* Enable supplement mode after cutting off the charger. */
+						if (sec_bat_has_dual_battery(battery->pdata)) {
+							val.intval = 1;
+							psy_do_property(battery->pdata->dual_battery_name, set,
+								POWER_SUPPLY_EXT_PROP_CHARGING_ENABLED, val);
+						}
 #endif
 					}
 				} else if ((voter_status == SEC_BAT_CHG_MODE_CHARGING_OFF ||

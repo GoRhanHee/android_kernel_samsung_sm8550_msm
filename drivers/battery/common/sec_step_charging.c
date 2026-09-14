@@ -160,12 +160,13 @@ bool sec_bat_check_step_charging(struct sec_battery_info *battery)
 
 	if (battery->step_chg_type & STEP_CHARGING_CONDITION_VOLTAGE) {
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-		step_condition_sub = battery->pdata->step_chg_cond_sub[age_step][i];
-		value = battery->voltage_pack_main;
-		value_sub = battery->voltage_pack_sub;
-#else
-		value = battery->voltage_avg;
+		if (sec_bat_has_dual_battery(battery->pdata)) {
+			step_condition_sub = battery->pdata->step_chg_cond_sub[age_step][i];
+			value = battery->voltage_pack_main;
+			value_sub = battery->voltage_pack_sub;
+		} else
 #endif
+			value = battery->voltage_avg;
 	} else if (battery->step_chg_type & STEP_CHARGING_CONDITION_SOC) {
 		value = battery->capacity;
 		if (lcd_status) {
@@ -178,17 +179,18 @@ bool sec_bat_check_step_charging(struct sec_battery_info *battery)
 
 	while (i < battery->step_chg_step - 1) {
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-		if (battery->step_chg_type & STEP_CHARGING_CONDITION_VOLTAGE) {
-			if ((value < step_condition) && (value_sub < step_condition_sub))
-				break;
-		} else {
+		if (sec_bat_has_dual_battery(battery->pdata)) {
+			if (battery->step_chg_type & STEP_CHARGING_CONDITION_VOLTAGE) {
+				if ((value < step_condition) && (value_sub < step_condition_sub))
+					break;
+			} else {
+				if (value < step_condition)
+					break;
+			}
+		} else
+#endif
 			if (value < step_condition)
 				break;
-		}
-#else
-		if (value < step_condition)
-			break;
-#endif
 		i++;
 
 		if ((battery->step_chg_type & STEP_CHARGING_CONDITION_SOC) &&
@@ -197,7 +199,8 @@ bool sec_bat_check_step_charging(struct sec_battery_info *battery)
 		else {
 			step_condition = battery->pdata->step_chg_cond[age_step][i];
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-			if (battery->step_chg_type & STEP_CHARGING_CONDITION_VOLTAGE)
+			if (sec_bat_has_dual_battery(battery->pdata) &&
+			    battery->step_chg_type & STEP_CHARGING_CONDITION_VOLTAGE)
 				step_condition_sub = battery->pdata->step_chg_cond_sub[age_step][i];
 #endif
 		}
@@ -386,30 +389,33 @@ bool sec_bat_check_dc_step_charging(struct sec_battery_info *battery)
 		step_vol = i;
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-		value = max((battery->voltage_pack_main - battery->pdata->dc_step_cond_v_margin_main),
-					(battery->voltage_pack_sub - battery->pdata->dc_step_cond_v_margin_sub));
-		/* (charging current)step down when main or sub voltage condition meets */
-		while (step_vol < battery->dc_step_chg_step - 1) {
-			if (battery->voltage_pack_main < battery->pdata->dc_step_chg_cond_vol[age_step][step_vol] &&
-				battery->voltage_pack_sub < battery->pdata->dc_step_chg_cond_vol_sub[age_step][step_vol])
-				break;
-			step_vol++;
-			if (battery->step_chg_status >= 0)
-				break;
-		}
-#else
-		if (dc_step_chg_type & STEP_CHARGING_CONDITION_FLOAT_VOLTAGE)
-			value = battery->voltage_now + battery->pdata->dc_step_chg_cond_v_margin;
-		else
-			value = battery->voltage_avg;
-		while (step_vol < battery->dc_step_chg_step - 1) {
-			if (value < battery->pdata->dc_step_chg_cond_vol[age_step][step_vol])
-				break;
-			step_vol++;
-			if (battery->step_chg_status >= 0)
-				break;
-		}
+		if (sec_bat_has_dual_battery(battery->pdata)) {
+			value = max((battery->voltage_pack_main - battery->pdata->dc_step_cond_v_margin_main),
+						(battery->voltage_pack_sub - battery->pdata->dc_step_cond_v_margin_sub));
+			/* (charging current)step down when main or sub voltage condition meets */
+			while (step_vol < battery->dc_step_chg_step - 1) {
+				if (battery->voltage_pack_main < battery->pdata->dc_step_chg_cond_vol[age_step][step_vol] &&
+					battery->voltage_pack_sub < battery->pdata->dc_step_chg_cond_vol_sub[age_step][step_vol])
+					break;
+				step_vol++;
+				if (battery->step_chg_status >= 0)
+					break;
+			}
+		} else
 #endif
+		{
+			if (dc_step_chg_type & STEP_CHARGING_CONDITION_FLOAT_VOLTAGE)
+				value = battery->voltage_now + battery->pdata->dc_step_chg_cond_v_margin;
+			else
+				value = battery->voltage_avg;
+			while (step_vol < battery->dc_step_chg_step - 1) {
+				if (value < battery->pdata->dc_step_chg_cond_vol[age_step][step_vol])
+					break;
+				step_vol++;
+				if (battery->step_chg_status >= 0)
+					break;
+			}
+		}
 		if ((step_vol < step) || (step < 0))
 			step = step_vol;
 
@@ -693,45 +699,49 @@ int sec_dc_step_charging_dt(struct sec_battery_info *battery, struct device *dev
 			}
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-			len = len / sizeof(u32);
-			pr_info("%s: step(%d) * age_step(%d), dc_step_chg_cond_vol_sub len(%d)\n",
-				__func__, battery->dc_step_chg_step, num_age_step, len);
+			if (sec_bat_has_dual_battery(battery->pdata)) {
+				kfree(vol_cond_temp);
+				of_get_property(np, "battery,dc_step_chg_cond_vol_sub", &len);
+				len = len / sizeof(u32);
+				pr_info("%s: step(%d) * age_step(%d), dc_step_chg_cond_vol_sub len(%d)\n",
+					__func__, battery->dc_step_chg_step, num_age_step, len);
 
-			vol_cond_temp = kcalloc(battery->dc_step_chg_step * num_age_step, sizeof(u32), GFP_KERNEL);
-			ret = of_property_read_u32_array(np, "battery,dc_step_chg_cond_vol_sub",
-						vol_cond_temp, battery->dc_step_chg_step * num_age_step);
-
-			/* copy buff to 2d arr */
-			pdata->dc_step_chg_cond_vol_sub = kcalloc(num_age_step, sizeof(u32 *), GFP_KERNEL);
-			for (i = 0; i < num_age_step; i++) {
-				pdata->dc_step_chg_cond_vol_sub[i] =
-					kcalloc(battery->dc_step_chg_step, sizeof(u32), GFP_KERNEL);
-				for (j = 0; j < battery->dc_step_chg_step; j++)
-					pdata->dc_step_chg_cond_vol_sub[i][j] =
-						vol_cond_temp[i*battery->dc_step_chg_step + j];
-			}
-
-			/* if there are only 1 dimentional array of value, get the same value */
-			if (battery->dc_step_chg_step * num_age_step != len) {
-				pr_err("%s: len of dc_step_chg_cond_vol_sub is not matched\n", __func__);
-
+				vol_cond_temp = kcalloc(battery->dc_step_chg_step * num_age_step, sizeof(u32), GFP_KERNEL);
 				ret = of_property_read_u32_array(np, "battery,dc_step_chg_cond_vol_sub",
-						*pdata->dc_step_chg_cond_vol_sub, battery->dc_step_chg_step);
+							vol_cond_temp, battery->dc_step_chg_step * num_age_step);
 
-				for (i = 1; i < num_age_step; i++) {
+				/* copy buff to 2d arr */
+				pdata->dc_step_chg_cond_vol_sub = kcalloc(num_age_step, sizeof(u32 *), GFP_KERNEL);
+				for (i = 0; i < num_age_step; i++) {
+					pdata->dc_step_chg_cond_vol_sub[i] =
+						kcalloc(battery->dc_step_chg_step, sizeof(u32), GFP_KERNEL);
 					for (j = 0; j < battery->dc_step_chg_step; j++)
 						pdata->dc_step_chg_cond_vol_sub[i][j] =
-							pdata->dc_step_chg_cond_vol_sub[0][j];
+							vol_cond_temp[i*battery->dc_step_chg_step + j];
 				}
-			}
 
-			/* debug log */
-			for (i = 0; i < num_age_step; i++) {
-				memset(str, 0x0, sizeof(str));
-				sprintf(str + strlen(str), "vol_sub arr[%d]:", i);
-				for (j = 0; j < battery->dc_step_chg_step; j++)
-					sprintf(str + strlen(str), " %d", pdata->dc_step_chg_cond_vol_sub[i][j]);
-				pr_info("%s: %s\n", __func__, str);
+				/* if there are only 1 dimentional array of value, get the same value */
+				if (battery->dc_step_chg_step * num_age_step != len) {
+					pr_err("%s: len of dc_step_chg_cond_vol_sub is not matched\n", __func__);
+
+					ret = of_property_read_u32_array(np, "battery,dc_step_chg_cond_vol_sub",
+							*pdata->dc_step_chg_cond_vol_sub, battery->dc_step_chg_step);
+
+					for (i = 1; i < num_age_step; i++) {
+						for (j = 0; j < battery->dc_step_chg_step; j++)
+							pdata->dc_step_chg_cond_vol_sub[i][j] =
+								pdata->dc_step_chg_cond_vol_sub[0][j];
+					}
+				}
+
+				/* debug log */
+				for (i = 0; i < num_age_step; i++) {
+					memset(str, 0x0, sizeof(str));
+					sprintf(str + strlen(str), "vol_sub arr[%d]:", i);
+					for (j = 0; j < battery->dc_step_chg_step; j++)
+						sprintf(str + strlen(str), " %d", pdata->dc_step_chg_cond_vol_sub[i][j]);
+					pr_info("%s: %s\n", __func__, str);
+				}
 			}
 #endif
 			if (ret) {
@@ -742,20 +752,22 @@ int sec_dc_step_charging_dt(struct sec_battery_info *battery, struct device *dev
 			kfree(vol_cond_temp);
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-			ret = of_property_read_u32(np, "battery,dc_step_cond_v_margin_main",
-					&battery->pdata->dc_step_cond_v_margin_main);
-			if (ret)
-				battery->pdata->dc_step_cond_v_margin_main = 0;
+			if (sec_bat_has_dual_battery(battery->pdata)) {
+				ret = of_property_read_u32(np, "battery,dc_step_cond_v_margin_main",
+						&battery->pdata->dc_step_cond_v_margin_main);
+				if (ret)
+					battery->pdata->dc_step_cond_v_margin_main = 0;
 
-			ret = of_property_read_u32(np, "battery,dc_step_cond_v_margin_sub",
-					&battery->pdata->dc_step_cond_v_margin_sub);
-			if (ret)
-				battery->pdata->dc_step_cond_v_margin_sub = 0;
+				ret = of_property_read_u32(np, "battery,dc_step_cond_v_margin_sub",
+						&battery->pdata->dc_step_cond_v_margin_sub);
+				if (ret)
+					battery->pdata->dc_step_cond_v_margin_sub = 0;
 
-			ret = of_property_read_u32(np, "battery,sc_vbat_thresh",
-					&battery->pdata->sc_vbat_thresh);
-			if (ret)
-				battery->pdata->sc_vbat_thresh = 4420;
+				ret = of_property_read_u32(np, "battery,sc_vbat_thresh",
+						&battery->pdata->sc_vbat_thresh);
+				if (ret)
+					battery->pdata->sc_vbat_thresh = 4420;
+			}
 #endif
 		}
 	}
@@ -1180,44 +1192,48 @@ void sec_step_charging_dt(struct sec_battery_info *battery, struct device *dev)
 		kfree(soc_cond_temp);
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-		if (battery->step_chg_type & STEP_CHARGING_CONDITION_VOLTAGE) {
-			/* get dt to buff */
-			soc_cond_temp = kcalloc(battery->step_chg_step * num_age_step, sizeof(u32), GFP_KERNEL);
-			ret = of_property_read_u32_array(np, "battery,step_chg_cond_sub",
-					soc_cond_temp, battery->step_chg_step * num_age_step);
+		if (sec_bat_has_dual_battery(battery->pdata)) {
+			if (battery->step_chg_type & STEP_CHARGING_CONDITION_VOLTAGE) {
+				/* get dt to buff */
+				of_get_property(np, "battery,step_chg_cond_sub", &len);
+				len /= sizeof(u32);
+				soc_cond_temp = kcalloc(battery->step_chg_step * num_age_step, sizeof(u32), GFP_KERNEL);
+				ret = of_property_read_u32_array(np, "battery,step_chg_cond_sub",
+						soc_cond_temp, battery->step_chg_step * num_age_step);
 
-			/* copy buff to 2d arr */
-			pdata->step_chg_cond_sub = kcalloc(num_age_step, sizeof(u32 *), GFP_KERNEL);
-			for (i = 0; i < num_age_step; i++) {
-				pdata->step_chg_cond_sub[i] =
-					kcalloc(battery->step_chg_step, sizeof(u32), GFP_KERNEL);
-				for (j = 0; j < battery->step_chg_step; j++)
-					pdata->step_chg_cond_sub[i][j] = soc_cond_temp[i*battery->step_chg_step + j];
-			}
-
-			/* if there are only 1 dimentional array of value, get the same value */
-			if (battery->step_chg_step * num_age_step != len) {
-				ret = of_property_read_u32_array(np, "battery,step_chg_cond",
-					*pdata->step_chg_cond_sub, battery->step_chg_step);
+				/* copy buff to 2d arr */
+				pdata->step_chg_cond_sub = kcalloc(num_age_step, sizeof(u32 *), GFP_KERNEL);
 				for (i = 0; i < num_age_step; i++) {
+					pdata->step_chg_cond_sub[i] =
+						kcalloc(battery->step_chg_step, sizeof(u32), GFP_KERNEL);
 					for (j = 0; j < battery->step_chg_step; j++)
-						pdata->step_chg_cond_sub[i][j] = pdata->step_chg_cond[0][j];
+						pdata->step_chg_cond_sub[i][j] = soc_cond_temp[i*battery->step_chg_step + j];
 				}
+
+				/* if there are only 1 dimentional array of value, get the same value */
+				if (battery->step_chg_step * num_age_step != len) {
+					ret = of_property_read_u32_array(np, "battery,step_chg_cond_sub",
+						*pdata->step_chg_cond_sub, battery->step_chg_step);
+					for (i = 1; i < num_age_step; i++) {
+						for (j = 0; j < battery->step_chg_step; j++)
+							pdata->step_chg_cond_sub[i][j] = pdata->step_chg_cond_sub[0][j];
+					}
+				}
+
+				/* debug log */
+				for (i = 0; i < num_age_step; i++) {
+					memset(str, 0x0, sizeof(str));
+					sprintf(str + strlen(str), "step_chg_cond_sub arr[%d]:", i);
+					for (j = 0; j < battery->step_chg_step; j++)
+						sprintf(str + strlen(str), " %d", pdata->step_chg_cond_sub[i][j]);
+					pr_info("%s: %s\n", __func__, str);
+				}
+
+				if (ret)
+					pr_info("%s : step_chg_cond_sub read fail\n", __func__);
+
+				kfree(soc_cond_temp);
 			}
-
-			/* debug log */
-			for (i = 0; i < num_age_step; i++) {
-				memset(str, 0x0, sizeof(str));
-				sprintf(str + strlen(str), "step_chg_cond_sub arr[%d]:", i);
-				for (j = 0; j < battery->step_chg_step; j++)
-					sprintf(str + strlen(str), " %d", pdata->step_chg_cond_sub[i][j]);
-				pr_info("%s: %s\n", __func__, str);
-			}
-
-			if (ret)
-				pr_info("%s : step_chg_cond_sub read fail\n", __func__);
-
-			kfree(soc_cond_temp);
 		}
 #endif
 

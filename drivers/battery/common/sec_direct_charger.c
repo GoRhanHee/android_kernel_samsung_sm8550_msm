@@ -146,12 +146,14 @@ static bool sec_direct_chg_check_temp(struct sec_direct_charger_info *charger)
 	}
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
 	/* check Tsub temperature */
-	psy_do_property("battery", get, POWER_SUPPLY_EXT_PROP_SUB_TEMP, value);
-	sub_batt_temp = value.intval;
-	if (sub_batt_temp <= charger->pdata->dchg_temp_low_threshold ||
-			sub_batt_temp >= charger->pdata->dchg_temp_high_threshold) {
-		pr_info("%s:  S/C was selected! Tsub(%d)\n", __func__, sub_batt_temp);
-		return true;
+	if (charger->pdata->dual_battery) {
+		psy_do_property("battery", get, POWER_SUPPLY_EXT_PROP_SUB_TEMP, value);
+		sub_batt_temp = value.intval;
+		if (sub_batt_temp <= charger->pdata->dchg_temp_low_threshold ||
+				sub_batt_temp >= charger->pdata->dchg_temp_high_threshold) {
+			pr_info("%s:  S/C was selected! Tsub(%d)\n", __func__, sub_batt_temp);
+			return true;
+		}
 	}
 #endif
 	return false;
@@ -701,9 +703,11 @@ static int sec_direct_chg_set_property(struct power_supply *psy,
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
 		/* Dual Battery featured model turn on the ADC block during all charging not only DC */
-		value.intval = (charger->cable_type == SEC_BATTERY_CABLE_NONE) ? 0 : 1;
-		psy_do_property(charger->pdata->direct_charger_name, set,
-						POWER_SUPPLY_EXT_PROP_DIRECT_ADC_CTRL, value);
+		if (charger->pdata->dual_battery) {
+			value.intval = (charger->cable_type == SEC_BATTERY_CABLE_NONE) ? 0 : 1;
+			psy_do_property(charger->pdata->direct_charger_name, set,
+							POWER_SUPPLY_EXT_PROP_DIRECT_ADC_CTRL, value);
+		}
 #endif
 
 		/* main charger */
@@ -877,6 +881,7 @@ static int sec_direct_charger_parse_dt(struct device *dev,
 		pr_err("%s: np NULL\n", __func__);
 		return 1;
 	}
+	charger->pdata->dual_battery = sec_bat_dt_has_dual_battery();
 	sb_of_parse_str_dt(np, "charger,battery_name", charger->pdata, battery_name);
 	sb_of_parse_str_dt(np, "charger,main_charger", charger->pdata, main_charger_name);
 	sb_of_parse_str_dt(np, "charger,direct_charger", charger->pdata, direct_charger_name);

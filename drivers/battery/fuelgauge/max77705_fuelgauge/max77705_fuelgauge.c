@@ -2173,15 +2173,16 @@ static int reinit_status(struct max77705_fuelgauge_data *fuelgauge) {
 				return -1;
 			}
 			else {
-#if !IS_ENABLED(CONFIG_DUAL_BATTERY)
+#if !IS_ENABLED(CONFIG_DUAL_BATTERY) || IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
 				union power_supply_propval value;
 
 				value.intval = 1;
 #endif
 				pr_info("%s: FG Initialization Success!!\n", __func__);
-#if !IS_ENABLED(CONFIG_DUAL_BATTERY)
-				psy_do_property("battery", set,
-					POWER_SUPPLY_EXT_PROP_POR_REINIT_COUNT, value);
+#if !IS_ENABLED(CONFIG_DUAL_BATTERY) || IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
+				if (!fuelgauge->dual_battery)
+					psy_do_property("battery", set,
+						POWER_SUPPLY_EXT_PROP_POR_REINIT_COUNT, value);
 #endif
 				return 0;
 			}
@@ -2648,14 +2649,16 @@ static int max77705_fg_get_property(struct power_supply *psy,
 				if (fuelgauge->pdata->bat_gpio_cnt > 0)
 					max77705_reset_bat_id(fuelgauge);
 #if defined(CONFIG_ID_USING_BAT_SUBBAT)
-				val->intval = fuelgauge->battery_data->main_battery_id;
+				val->intval = fuelgauge->dual_battery ?
+					fuelgauge->battery_data->main_battery_id :
+					fuelgauge->battery_data->battery_id;
 #else
 				val->intval = fuelgauge->battery_data->battery_id;
 #endif
 				pr_info("%s: bat_id_gpio = %d \n", __func__, val->intval);
 			}
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-			else if (val->intval == SEC_DUAL_BATTERY_SUB) {
+			else if (fuelgauge->dual_battery && val->intval == SEC_DUAL_BATTERY_SUB) {
 				if (fuelgauge->pdata->sub_bat_gpio_cnt > 0)
 					max77705_reset_bat_id(fuelgauge);
 				val->intval = fuelgauge->battery_data->sub_battery_id;
@@ -2966,16 +2969,18 @@ static void max77705_reset_bat_id(struct max77705_fuelgauge_data *fuelgauge)
 		max77705_get_bat_id(bat_id, fuelgauge->pdata->bat_gpio_cnt);
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	for (i = 0; i < fuelgauge->pdata->sub_bat_gpio_cnt; i++)
-		bat_id[i] = gpio_get_value(fuelgauge->pdata->sub_bat_id_gpio[i]);
+	if (fuelgauge->dual_battery) {
+		for (i = 0; i < fuelgauge->pdata->sub_bat_gpio_cnt; i++)
+			bat_id[i] = gpio_get_value(fuelgauge->pdata->sub_bat_id_gpio[i]);
 
-	fuelgauge->battery_data->sub_battery_id =
-		max77705_get_bat_id(bat_id, fuelgauge->pdata->sub_bat_gpio_cnt);
+		fuelgauge->battery_data->sub_battery_id =
+			max77705_get_bat_id(bat_id, fuelgauge->pdata->sub_bat_gpio_cnt);
 #if defined(CONFIG_ID_USING_BAT_SUBBAT)
-	fuelgauge->battery_data->main_battery_id = fuelgauge->battery_data->battery_id;
-	fuelgauge->battery_data->battery_id =
-			(fuelgauge->battery_data->battery_id << fuelgauge->pdata->sub_bat_gpio_cnt ) | fuelgauge->battery_data->sub_battery_id;
+		fuelgauge->battery_data->main_battery_id = fuelgauge->battery_data->battery_id;
+		fuelgauge->battery_data->battery_id =
+				(fuelgauge->battery_data->battery_id << fuelgauge->pdata->sub_bat_gpio_cnt) | fuelgauge->battery_data->sub_battery_id;
 #endif
+	}
 #endif
 }
 
@@ -2992,6 +2997,8 @@ static int max77705_fuelgauge_parse_dt(struct max77705_fuelgauge_data *fuelgauge
 	int j = 0;
 
 	/* reset, irq gpio info */
+	fuelgauge->dual_battery = sec_bat_dt_has_dual_battery();
+
 	if (np == NULL) {
 		pr_err("%s: np NULL\n", __func__);
 	} else {
@@ -3156,38 +3163,40 @@ static int max77705_fuelgauge_parse_dt(struct max77705_fuelgauge_data *fuelgauge
 		pr_info("%s: battery_id(batt_id:%d) = %d\n", __func__, fuelgauge->battery_data->battery_id, battery_id);
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-		pdata->sub_bat_gpio_cnt = of_gpio_named_count(np, "fuelgauge,sub_bat_id_gpio");
-		/* not run if gpio gpio cnt is less than 1 */
-		if (pdata->sub_bat_gpio_cnt > 0) {
-			pr_info("%s: Has %d sub_bat_id_gpios\n", __func__, pdata->sub_bat_gpio_cnt);
-			if (pdata->sub_bat_gpio_cnt > BAT_GPIO_NO) {
-				pr_err("%s: sub_bat_id_gpio, catch out-of bounds array read\n",
-						__func__);
-				pdata->sub_bat_gpio_cnt = BAT_GPIO_NO;
-			}
-			for (i = 0; i < pdata->sub_bat_gpio_cnt; i++) {
-				pdata->sub_bat_id_gpio[i] = of_get_named_gpio(np, "fuelgauge,sub_bat_id_gpio", i);
-				if (pdata->sub_bat_id_gpio[i] >= 0) {
-					bat_id[i] = gpio_get_value(pdata->sub_bat_id_gpio[i]);
-				} else {
-					pr_err("%s: error reading sub_bat_id_gpio = %d\n",
-						__func__, pdata->sub_bat_id_gpio[i]);
-					bat_id[i] = 0;
+		if (fuelgauge->dual_battery) {
+			pdata->sub_bat_gpio_cnt = of_gpio_named_count(np, "fuelgauge,sub_bat_id_gpio");
+			/* not run if gpio gpio cnt is less than 1 */
+			if (pdata->sub_bat_gpio_cnt > 0) {
+				pr_info("%s: Has %d sub_bat_id_gpios\n", __func__, pdata->sub_bat_gpio_cnt);
+				if (pdata->sub_bat_gpio_cnt > BAT_GPIO_NO) {
+					pr_err("%s: sub_bat_id_gpio, catch out-of bounds array read\n",
+							__func__);
+					pdata->sub_bat_gpio_cnt = BAT_GPIO_NO;
 				}
-			}
-			fuelgauge->battery_data->sub_battery_id =
-					max77705_get_bat_id(bat_id, pdata->sub_bat_gpio_cnt);
-		} else
-			fuelgauge->battery_data->sub_battery_id = 0;
+				for (i = 0; i < pdata->sub_bat_gpio_cnt; i++) {
+					pdata->sub_bat_id_gpio[i] = of_get_named_gpio(np, "fuelgauge,sub_bat_id_gpio", i);
+					if (pdata->sub_bat_id_gpio[i] >= 0) {
+						bat_id[i] = gpio_get_value(pdata->sub_bat_id_gpio[i]);
+					} else {
+						pr_err("%s: error reading sub_bat_id_gpio = %d\n",
+							__func__, pdata->sub_bat_id_gpio[i]);
+						bat_id[i] = 0;
+					}
+				}
+				fuelgauge->battery_data->sub_battery_id =
+						max77705_get_bat_id(bat_id, pdata->sub_bat_gpio_cnt);
+			} else
+				fuelgauge->battery_data->sub_battery_id = 0;
 
-		pr_info("%s: sub_battery_id = %d\n", __func__, fuelgauge->battery_data->sub_battery_id);
+			pr_info("%s: sub_battery_id = %d\n", __func__, fuelgauge->battery_data->sub_battery_id);
 #if defined (CONFIG_ID_USING_BAT_SUBBAT)
-		fuelgauge->battery_data->main_battery_id = fuelgauge->battery_data->battery_id;
-		fuelgauge->battery_data->battery_id =
-				(fuelgauge->battery_data->battery_id << pdata->sub_bat_gpio_cnt ) | fuelgauge->battery_data->sub_battery_id;
-		battery_id = fuelgauge->battery_data->battery_id;
-		pr_info("%s: Effective battery_id(batt_id:%d) = %d\n", __func__, fuelgauge->battery_data->battery_id, battery_id);
+			fuelgauge->battery_data->main_battery_id = fuelgauge->battery_data->battery_id;
+			fuelgauge->battery_data->battery_id =
+					(fuelgauge->battery_data->battery_id << pdata->sub_bat_gpio_cnt) | fuelgauge->battery_data->sub_battery_id;
+			battery_id = fuelgauge->battery_data->battery_id;
+			pr_info("%s: Effective battery_id(batt_id:%d) = %d\n", __func__, fuelgauge->battery_data->battery_id, battery_id);
 #endif
+		}
 #endif
 		if (fuelgauge->pdata->capacity_calculation_type &
 			SEC_FUELGAUGE_CAPACITY_TYPE_LOST_SOC)

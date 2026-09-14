@@ -22,6 +22,7 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
+#include <linux/of.h>
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
@@ -36,6 +37,24 @@
 #include <dt-bindings/battery/sec-battery.h>
 #include "sec_battery_vote.h"
 #include "sec_charging_modprobe.h"
+
+/* Read once by each charger/fuelgauge at probe, independent of build model. */
+static inline bool sec_bat_dt_has_dual_battery(void)
+{
+#if IS_ENABLED(CONFIG_DUAL_BATTERY)
+	struct device_node *np;
+	const char *name;
+	bool dual;
+
+	np = of_find_node_by_name(NULL, "battery");
+	dual = np && !of_property_read_string(np, "battery,dual_battery_name",
+					     &name) && name[0];
+	of_node_put(np);
+	return dual;
+#else
+	return false;
+#endif
+}
 
 /* definitions */
 #define SEC_BATTERY_CABLE_HV_WIRELESS_ETX	100

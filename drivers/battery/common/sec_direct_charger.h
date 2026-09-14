@@ -62,6 +62,7 @@ enum {
 
 struct sec_direct_charger_platform_data {
 	char *battery_name;
+	bool dual_battery;
 	char *main_charger_name;
 	char *direct_charger_name;
 	char *direct_sub_charger_name;

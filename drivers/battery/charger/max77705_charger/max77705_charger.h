@@ -445,6 +445,7 @@ struct max77705_charger_data {
 	int dpm_last_icl;
 
 	max77705_charger_platform_data_t *pdata;
+	bool dual_battery;
 };
 
 #endif /* __MAX77705_CHARGER_H */

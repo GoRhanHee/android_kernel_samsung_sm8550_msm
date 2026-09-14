@@ -2378,8 +2378,9 @@ static void max77705_wc_current_work(struct work_struct *work)
 		max77705_set_input_current(charger, charger->wc_pre_current);
 		max77705_set_charge_current(charger, charger->charging_current);
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-		psy_do_property("battery", set,
-			POWER_SUPPLY_EXT_PROP_FASTCHG_LIMIT_CURRENT, value);
+		if (charger->dual_battery)
+			psy_do_property("battery", set,
+				POWER_SUPPLY_EXT_PROP_FASTCHG_LIMIT_CURRENT, value);
 #endif
 		/* Wcurr-B) Restore Vrect adj room to previous value
 		 *  after finishing wireless input current setting.
@@ -2418,8 +2419,9 @@ static void max77705_wc_chg_current_work(struct work_struct *work)
 
 	max77705_set_charge_current(charger, charger->charging_current);
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	psy_do_property("battery", set,
-		POWER_SUPPLY_EXT_PROP_FASTCHG_LIMIT_CURRENT, value);
+	if (charger->dual_battery)
+		psy_do_property("battery", set,
+			POWER_SUPPLY_EXT_PROP_FASTCHG_LIMIT_CURRENT, value);
 #endif
 	__pm_relax(charger->wc_chg_current_ws);
 }
@@ -2514,6 +2516,8 @@ static int max77705_charger_parse_dt(struct max77705_charger_data *charger)
 	struct device_node *np;
 	max77705_charger_platform_data_t *pdata = charger->pdata;
 	int ret = 0;
+
+	charger->dual_battery = sec_bat_dt_has_dual_battery();
 
 	np = of_find_node_by_name(NULL, "battery");
 	if (!np) {

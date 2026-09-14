@@ -186,6 +186,10 @@ enum {
 	EVENT_POR_REINIT,
 #endif
 	EVENT_DATA_MAX,
+#if IS_ENABLED(CONFIG_DUAL_BATTERY)
+	/* Single-pack firmware uses this wire index for POR instead. */
+	EVENT_POR_REINIT = EVENT_MAIN_BAT_ERR,
+#endif
 };
 
 extern const char *cisd_data_str[];
