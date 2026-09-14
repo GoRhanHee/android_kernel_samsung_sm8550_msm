@@ -1861,7 +1861,9 @@ static void ffs_data_reset(struct ffs_data *ffs)
 }
 
 
-static int functionfs_bind(struct ffs_data *ffs, struct usb_composite_dev *cdev)
+/* Keep the FunctionFS vendor probe target across ThinLTO. */
+static noinline __used int functionfs_bind(struct ffs_data *ffs,
+					struct usb_composite_dev *cdev)
 {
 	struct usb_gadget_strings **lang;
 	int first_id;
@@ -3836,7 +3838,8 @@ done:
 	return ret;
 }
 
-static void ffs_closed(struct ffs_data *ffs)
+/* Keep the FunctionFS vendor probe target across ThinLTO. */
+static noinline __used void ffs_closed(struct ffs_data *ffs)
 {
 	struct ffs_dev *ffs_obj;
 	struct f_fs_opts *opts;

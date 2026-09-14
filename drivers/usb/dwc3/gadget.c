@@ -3975,7 +3975,8 @@ static void dwc3_gadget_reset_interrupt(struct dwc3 *dwc)
 	dwc->link_state = DWC3_LINK_STATE_RESET;
 }
 
-static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
+/* Vendor connection hooks look up this function by name. */
+static noinline __used void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 {
 	struct dwc3_ep		*dep;
 	int			ret;
