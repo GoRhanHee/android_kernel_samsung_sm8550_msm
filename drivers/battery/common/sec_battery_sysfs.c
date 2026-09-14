@@ -1743,7 +1743,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 		{
 			value.intval = SEC_DUAL_BATTERY_MAIN;
 			psy_do_property(battery->pdata->dual_battery_name, get,
-				POWER_SUPPLY_PROP_CURRENT_AVG, value);
+				POWER_SUPPLY_PROP_CURRENT_NOW, value);
 			i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
 				value.intval);
 		}
@@ -1752,7 +1752,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 		{
 			value.intval = SEC_DUAL_BATTERY_SUB;
 			psy_do_property(battery->pdata->dual_battery_name, get,
-				POWER_SUPPLY_PROP_CURRENT_AVG, value);
+				POWER_SUPPLY_PROP_CURRENT_NOW, value);
 			i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
 				value.intval);
 		}

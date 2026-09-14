@@ -1373,6 +1373,27 @@ static bool sec_bat_check_by_gpio(struct sec_battery_info *battery)
 }
 
 #if !defined(CONFIG_SEC_FACTORY)
+static bool sec_bat_limiter_is_s2asl01(const char *name)
+{
+	struct power_supply *psy;
+	bool supported;
+
+	if (!name)
+		return false;
+
+	psy = power_supply_get_by_name(name);
+	if (!psy)
+		return false;
+
+	/* Universal builds contain both MAX17333 and S2ASL01 drivers. */
+	supported = psy->dev.parent &&
+		of_device_is_compatible(psy->dev.parent->of_node,
+				"samsung,s2asl01-limiter");
+	power_supply_put(psy);
+
+	return supported;
+}
+
 static void sec_bat_powerpath_check(struct sec_battery_info *battery, int m_health, int s_health)
 {
 	static int m_abnormal_cnt, s_abnormal_cnt;
@@ -1447,6 +1468,17 @@ static void sec_bat_limiter_check(struct sec_battery_info *battery)
 {
 	union power_supply_propval m_value = {0, }, s_value = {0, };
 	int main_enb, main_enb2, sub_enb;
+	int ret;
+
+	/* The health checks and GPIO recovery below are S2ASL01-specific. */
+	if (!sec_bat_limiter_is_s2asl01(battery->pdata->main_limiter_name) ||
+		!sec_bat_limiter_is_s2asl01(battery->pdata->sub_limiter_name))
+		return;
+
+	if (!gpio_is_valid(battery->pdata->main_bat_enb_gpio) ||
+		!gpio_is_valid(battery->pdata->main_bat_enb2_gpio) ||
+		!gpio_is_valid(battery->pdata->sub_bat_enb_gpio))
+		return;
 
 	/* do not check limiter status when enb is not active status since it is certain test mode using enb pin */
 	main_enb = gpio_get_value(battery->pdata->main_bat_enb_gpio);
@@ -1459,12 +1491,16 @@ static void sec_bat_limiter_check(struct sec_battery_info *battery)
 	}
 
 	/* check powermeter and vchg, vbat value of main limiter */
-	psy_do_property(battery->pdata->main_limiter_name, get,
+	ret = psy_do_property(battery->pdata->main_limiter_name, get,
 		POWER_SUPPLY_PROP_HEALTH, m_value);
+	if (ret < 0)
+		return;
 
 	/* check powermeter and vchg, vbat value of sub limiter */
-	psy_do_property(battery->pdata->sub_limiter_name, get,
+	ret = psy_do_property(battery->pdata->sub_limiter_name, get,
 		POWER_SUPPLY_PROP_HEALTH, s_value);
+	if (ret < 0)
+		return;
 
 	if (is_nocharge_type(battery->cable_type))
 		sec_bat_powerpath_check(battery, m_value.intval, s_value.intval);
@@ -1515,8 +1551,10 @@ static void sec_bat_limiter_check(struct sec_battery_info *battery)
 		pr_info("%s : main limiter wa done\n", __func__);
 
 		/* re-check powermeter and vchg, vbat value of main limiter */
-		psy_do_property(battery->pdata->main_limiter_name, get,
+		ret = psy_do_property(battery->pdata->main_limiter_name, get,
 			POWER_SUPPLY_PROP_HEALTH, m_value);
+		if (ret < 0)
+			return;
 
 		if (m_value.intval != POWER_SUPPLY_HEALTH_GOOD) {
 			pr_info("%s : main limiter wa did not work\n", __func__);
@@ -1562,8 +1600,10 @@ static void sec_bat_limiter_check(struct sec_battery_info *battery)
 		pr_info("%s : sub limiter wa done\n", __func__);
 
 		/* re-check powermeter and vchg, vbat value of sub limiter */
-		psy_do_property(battery->pdata->sub_limiter_name, get,
+		ret = psy_do_property(battery->pdata->sub_limiter_name, get,
 			POWER_SUPPLY_PROP_HEALTH, s_value);
+		if (ret < 0)
+			return;
 
 		if (s_value.intval != POWER_SUPPLY_HEALTH_GOOD) {
 			pr_info("%s : main limiter wa did not work\n", __func__);
@@ -3202,13 +3242,13 @@ void sec_bat_get_battery_info(struct sec_battery_info *battery)
 	/* get main current */
 	value.intval = SEC_DUAL_BATTERY_MAIN;
 	psy_do_property(battery->pdata->dual_battery_name, get,
-		POWER_SUPPLY_PROP_CURRENT_AVG, value);
+		POWER_SUPPLY_PROP_CURRENT_NOW, value);
 	battery->current_now_main = value.intval;
 
 	/* get sub current */
 	value.intval = SEC_DUAL_BATTERY_SUB;
 	psy_do_property(battery->pdata->dual_battery_name, get,
-		POWER_SUPPLY_PROP_CURRENT_AVG, value);
+		POWER_SUPPLY_PROP_CURRENT_NOW, value);
 	battery->current_now_sub = value.intval;
 #endif
 
