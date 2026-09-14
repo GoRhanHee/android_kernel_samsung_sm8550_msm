@@ -62,10 +62,16 @@ enum {
 	OPTION_TYPE_MAX
 };
 
-#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2)
+#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && \
+	IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2)
 #include <linux/sec_panel_notifier_v2.h>
-#elif IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER)
+#endif
+#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && \
+	IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER)
+/* The two notifier ABIs use the same enum tag but different event layouts. */
+#define panel_notifier_event_t ss_panel_notifier_event_t
 #include "../sec_panel_notifier/sec_panel_notifier.h"
+#undef panel_notifier_event_t
 #endif
 
 #define LIGHT_CAL_PASS 1
@@ -79,6 +85,9 @@ int get_light_sidx(struct adsp_data *data)
 {
 	int ret = MSG_LIGHT;
 #if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC)
+	if (!adsp_factory_has_sensor(MSG_LIGHT_SUB))
+		return MSG_LIGHT;
+
 	switch (data->fac_fstate) {
 	case FSTATE_INACTIVE:
 	case FSTATE_FAC_INACTIVE:
@@ -100,7 +109,8 @@ int get_light_display_sidx(int32_t idx)
 {
 	int ret = MSG_LIGHT;
 #if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC)
-	ret = idx == 0 ? MSG_LIGHT : MSG_LIGHT_SUB;
+	if (adsp_factory_has_sensor(MSG_LIGHT_SUB))
+		ret = idx == 0 ? MSG_LIGHT : MSG_LIGHT_SUB;
 #endif
 	return ret;
 }
@@ -385,7 +395,8 @@ static ssize_t light_hyst_store(struct device *dev,
 	return size;
 }
 
-#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2)
+#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && \
+	IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2)
 void light_brightness_work_func(struct work_struct *work)
 {
 	struct adsp_data *data = container_of((struct work_struct *)work,
@@ -591,7 +602,10 @@ static struct notifier_block light_panel_data_notifier = {
 	.notifier_call = light_panel_data_notify,
 	.priority = 1,
 };
-#elif IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER)
+#endif
+#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && \
+	IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER)
+#if !IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2)
 void light_brightness_work_func(struct work_struct *work)
 {
 	struct adsp_data *data = container_of((struct work_struct *)work,
@@ -622,7 +636,8 @@ void light_brightness_work_func(struct work_struct *work)
 	mutex_unlock(&data->light_factory_mutex);
 }
 
-int light_panel_data_notify(struct notifier_block *nb,
+#endif
+int light_panel_data_notify_v1(struct notifier_block *nb,
 	unsigned long val, void *v)
 {
 	struct adsp_data *data = adsp_get_struct_data();
@@ -792,8 +807,8 @@ int light_panel_data_notify(struct notifier_block *nb,
 	return 0;
 }
 
-static struct notifier_block light_panel_data_notifier = {
-	.notifier_call = light_panel_data_notify,
+static struct notifier_block light_panel_data_notifier_v1 = {
+	.notifier_call = light_panel_data_notify_v1,
 	.priority = 1,
 };
 #endif /* CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR */
@@ -1285,11 +1300,13 @@ void light_init_work_func(struct work_struct *work)
 {
 	struct adsp_data *data = container_of((struct delayed_work *)work,
 		struct adsp_data, light_init_work);
-#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2)
+#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && \
+	IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2)
 	int32_t msg_buf[4], i, light_idx, max_idx = 1;
 
 #if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC)
-	max_idx = 2;
+	if (adsp_factory_has_sensor(MSG_LIGHT_SUB))
+		max_idx = 2;
 #endif
 
 	for (i = 0; i < max_idx; i++) {
@@ -1313,10 +1330,12 @@ void light_init_work_func(struct work_struct *work)
 #endif
 	light_get_device_id(data, MSG_LIGHT);
 #if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC)
-	light_get_device_id(data, MSG_LIGHT_SUB);
+	if (adsp_factory_has_sensor(MSG_LIGHT_SUB))
+		light_get_device_id(data, MSG_LIGHT_SUB);
 #endif
 
-#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2)
+#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && \
+	IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2)
 	schedule_work(&data->light_br_work);
 #endif
 }
@@ -1333,6 +1352,23 @@ void light_init_work(struct adsp_data *data)
 }
 
 #if IS_ENABLED(CONFIG_SUPPORT_LIGHT_CALIBRATION)
+#if IS_ENABLED(CONFIG_SUPPORT_PROX_CALIBRATION)
+static u16 get_light_cal_prox_sidx(u16 light_idx)
+{
+	if (IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC_BUT_SUPPORT_SINGLE_PROX) &&
+	    !adsp_factory_is_flip())
+		return light_idx == MSG_LIGHT_SUB ? MSG_PROX : MSG_SENSOR_MAX;
+
+	if (light_idx == MSG_LIGHT)
+		return MSG_PROX;
+#if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC)
+	if (light_idx == MSG_LIGHT_SUB && adsp_factory_has_sensor(MSG_PROX_SUB))
+		return MSG_PROX_SUB;
+#endif
+	return MSG_SENSOR_MAX;
+}
+#endif
+
 void light_cal_read_work_func(struct work_struct *work)
 {
 	struct adsp_data *data = container_of((struct delayed_work *)work,
@@ -1342,10 +1378,13 @@ void light_cal_read_work_func(struct work_struct *work)
 
 #if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC)
 	light_idx = MSG_LIGHT;
-	i = 2;
+	i = adsp_factory_has_sensor(MSG_LIGHT_SUB) ? 2 : 1;
 #endif
 
 	while (i--) {
+#if IS_ENABLED(CONFIG_SUPPORT_PROX_CALIBRATION)
+		u16 prox_idx = get_light_cal_prox_sidx(light_idx);
+#endif
 		mutex_lock(&data->light_factory_mutex);
 		cmd = OPTION_TYPE_LOAD_LIGHT_CAL;
 		adsp_unicast(&cmd, sizeof(int32_t),
@@ -1364,17 +1403,8 @@ void light_cal_read_work_func(struct work_struct *work)
 			pr_err("[SSC_FAC] %s: UB is not matched!!!(%d %d)\n", __func__,
 				light_idx, data->msg_buf[light_idx][0]);
 #if IS_ENABLED(CONFIG_SUPPORT_PROX_CALIBRATION)
-#if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC_BUT_SUPPORT_SINGLE_PROX)
-			if (light_idx == MSG_LIGHT_SUB)
-				prox_send_cal_data(data, MSG_PROX, false);
-#else
-			if (light_idx == MSG_LIGHT)
-				prox_send_cal_data(data, MSG_PROX, false);
-#if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC)
-			else if (light_idx == MSG_LIGHT_SUB)
-				prox_send_cal_data(data, MSG_PROX_SUB, false);
-#endif
-#endif
+			if (prox_idx != MSG_SENSOR_MAX)
+				prox_send_cal_data(data, prox_idx, false);
 #endif /* CONFIG_SUPPORT_PROX_CALIBRATION */
 #if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC)
 			light_idx = MSG_LIGHT_SUB;
@@ -1400,23 +1430,15 @@ void light_cal_read_work_func(struct work_struct *work)
 		}
 
 #if IS_ENABLED(CONFIG_SUPPORT_PROX_CALIBRATION)
-#if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC_BUT_SUPPORT_SINGLE_PROX)
-		if (light_idx == MSG_LIGHT_SUB) {
-			data->prox_cal = data->msg_buf[light_idx][4];
-			prox_send_cal_data(data, MSG_PROX, true);
-		}
-#else
-		if (light_idx == MSG_LIGHT) {
-			data->prox_cal = data->msg_buf[light_idx][4];
-			prox_send_cal_data(data, MSG_PROX, true);
-		}
+		if (prox_idx != MSG_SENSOR_MAX) {
 #if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC)
-		else if (light_idx == MSG_LIGHT_SUB) {
-			data->prox_sub_cal = data->msg_buf[light_idx][4];
-			prox_send_cal_data(data, MSG_PROX_SUB, true);
+			if (prox_idx == MSG_PROX_SUB)
+				data->prox_sub_cal = data->msg_buf[light_idx][4];
+			else
+#endif
+				data->prox_cal = data->msg_buf[light_idx][4];
+			prox_send_cal_data(data, prox_idx, true);
 		}
-#endif
-#endif
 #endif /* CONFIG_SUPPORT_PROX_CALIBRATION */
 
 		if (msg_buf[1] == LIGHT_CAL_PASS) {
@@ -1814,10 +1836,15 @@ static struct device_attribute *light_attrs[] = {
 int light_factory_init(void)
 {
 	adsp_factory_register(MSG_LIGHT, light_attrs);
-#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && IS_ENABLED (CONFIG_SEC_PANEL_NOTIFIER_V2)
-	panel_notifier_register(&light_panel_data_notifier);
-#elif IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER)
-	ss_panel_notifier_register(&light_panel_data_notifier);
+#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && \
+	IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2)
+	if (!adsp_factory_is_s23())
+		panel_notifier_register(&light_panel_data_notifier);
+#endif
+#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && \
+	IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER)
+	if (adsp_factory_is_s23() || !IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2))
+		ss_panel_notifier_register(&light_panel_data_notifier_v1);
 #endif
 	pr_info("[SSC_FAC] %s\n", __func__);
 
@@ -1827,10 +1854,15 @@ int light_factory_init(void)
 void light_factory_exit(void)
 {
 	adsp_factory_unregister(MSG_LIGHT);
-#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && IS_ENABLED (CONFIG_SEC_PANEL_NOTIFIER_V2)
-	panel_notifier_unregister(&light_panel_data_notifier);
-#elif IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER)
-	ss_panel_notifier_register(&light_panel_data_notifier);
+#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && \
+	IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2)
+	if (!adsp_factory_is_s23())
+		panel_notifier_unregister(&light_panel_data_notifier);
+#endif
+#if IS_ENABLED(CONFIG_SUPPORT_BRIGHTNESS_NOTIFY_FOR_LIGHT_SENSOR) && \
+	IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER)
+	if (adsp_factory_is_s23() || !IS_ENABLED(CONFIG_SEC_PANEL_NOTIFIER_V2))
+		ss_panel_notifier_unregister(&light_panel_data_notifier_v1);
 #endif
 	pr_info("[SSC_FAC] %s\n", __func__);
 }

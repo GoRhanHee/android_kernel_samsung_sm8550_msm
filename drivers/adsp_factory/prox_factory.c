@@ -69,7 +69,12 @@ static struct prox_data *pdata;
 static int get_prox_sidx(struct adsp_data *data)
 {
 	int ret = MSG_PROX;
-#if defined(CONFIG_SUPPORT_DUAL_OPTIC) && !defined(CONFIG_SUPPORT_DUAL_OPTIC_BUT_SUPPORT_SINGLE_PROX)
+#if IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC)
+	if (!adsp_factory_has_sensor(MSG_PROX_SUB) ||
+	    (IS_ENABLED(CONFIG_SUPPORT_DUAL_OPTIC_BUT_SUPPORT_SINGLE_PROX) &&
+	     !adsp_factory_is_flip()))
+		return MSG_PROX;
+
 	switch (data->fac_fstate) {
 	case FSTATE_INACTIVE:
 	case FSTATE_FAC_INACTIVE:

@@ -16,11 +16,6 @@
 #include <linux/module.h>
 #include "adsp.h"
 #define VENDOR "STM"
-#if IS_ENABLED(CONFIG_LSM6DSV_FACTORY)
-#define CHIP_ID "LSM6DSVW"
-#else
-#define CHIP_ID "LSM6DSOW"
-#endif
 #define ST_PASS 1
 #define ST_FAIL 0
 #define STARTUP_BIT_FAIL 2
@@ -37,7 +32,7 @@ static ssize_t sub_gyro_vendor_show(struct device *dev,
 static ssize_t sub_gyro_name_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%s\n", CHIP_ID);
+	return snprintf(buf, PAGE_SIZE, "%sW\n", adsp_factory_imu_name());
 }
 
 static ssize_t selftest_revised_show(struct device *dev,

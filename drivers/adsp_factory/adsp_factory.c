@@ -79,14 +79,20 @@ struct adsp_factory_protocol {
 	const char *model;
 	const u8 *sensor_types;
 	size_t sensor_count;
+	const char *imu_name;
 };
 
 static const struct adsp_factory_protocol factory_protocols[] = {
-	{ "Samsung DM1Q PROJECT", s23_sensor_types, ARRAY_SIZE(s23_sensor_types) },
-	{ "Samsung DM2Q PROJECT", s23_sensor_types, ARRAY_SIZE(s23_sensor_types) },
-	{ "Samsung DM3Q PROJECT", s23_sensor_types, ARRAY_SIZE(s23_sensor_types) },
-	{ "Samsung Q5Q PROJECT", fold_sensor_types, ARRAY_SIZE(fold_sensor_types) },
-	{ "Samsung B5Q PROJECT", fold_sensor_types, ARRAY_SIZE(fold_sensor_types) },
+	{ "Samsung DM1Q PROJECT", s23_sensor_types,
+	  ARRAY_SIZE(s23_sensor_types), "LSM6DSO" },
+	{ "Samsung DM2Q PROJECT", s23_sensor_types,
+	  ARRAY_SIZE(s23_sensor_types), "LSM6DSO" },
+	{ "Samsung DM3Q PROJECT", s23_sensor_types,
+	  ARRAY_SIZE(s23_sensor_types), "LSM6DSO" },
+	{ "Samsung Q5Q PROJECT", fold_sensor_types,
+	  ARRAY_SIZE(fold_sensor_types), "LSM6DSV" },
+	{ "Samsung B5Q PROJECT", fold_sensor_types,
+	  ARRAY_SIZE(fold_sensor_types), "LSM6DSO" },
 };
 
 static const struct adsp_factory_protocol *factory_protocol;
@@ -135,6 +141,52 @@ static int adsp_sensor_to_daemon(u16 sensor_type)
 	}
 #endif
 	return sensor_type;
+}
+
+bool adsp_factory_has_sensor(u16 sensor_type)
+{
+#if IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
+	if (factory_protocol) {
+		/* These are reserved wire slots, not populated hardware. */
+		if (!strcmp(factory_protocol->model, "Samsung B5Q PROJECT") &&
+		    (sensor_type == MSG_PRESSURE || sensor_type == MSG_PRESSURE_TEMP))
+			return false;
+		if (!strcmp(factory_protocol->model, "Samsung Q5Q PROJECT") &&
+		    sensor_type == MSG_PROX_SUB)
+			return false;
+	}
+#endif
+	return sensor_type < MSG_SENSOR_MAX && adsp_sensor_to_daemon(sensor_type) >= 0;
+}
+
+bool adsp_factory_is_s23(void)
+{
+#if IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
+	return factory_protocol && factory_protocol->sensor_types == s23_sensor_types;
+#else
+	return IS_ENABLED(CONFIG_SEC_DM1Q_PROJECT) ||
+		IS_ENABLED(CONFIG_SEC_DM2Q_PROJECT) || IS_ENABLED(CONFIG_SEC_DM3Q_PROJECT);
+#endif
+}
+
+bool adsp_factory_is_flip(void)
+{
+#if IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
+	if (factory_protocol)
+		return !strcmp(factory_protocol->model, "Samsung B5Q PROJECT");
+	return IS_ENABLED(CONFIG_SUPPORT_SENSOR_FLIP_MODEL);
+#else
+	return IS_ENABLED(CONFIG_SUPPORT_SENSOR_FLIP_MODEL);
+#endif
+}
+
+const char *adsp_factory_imu_name(void)
+{
+#if IS_ENABLED(CONFIG_SEC_UNIVERSAL_PROJECT)
+	if (factory_protocol)
+		return factory_protocol->imu_name;
+#endif
+	return IS_ENABLED(CONFIG_LSM6DSV_FACTORY) ? "LSM6DSV" : "LSM6DSO";
 }
 
 static int adsp_sensor_from_daemon(u16 sensor_type)
@@ -227,6 +279,8 @@ int adsp_unicast(void *param, int param_size, u16 sensor_type,
 
 	if (sensor_type >= MSG_SENSOR_MAX || msg_type >= MSG_TYPE_MAX)
 		return -EINVAL;
+	if (!adsp_factory_has_sensor(sensor_type))
+		return -EOPNOTSUPP;
 
 	daemon_sensor_type = adsp_sensor_to_daemon(sensor_type);
 	if (daemon_sensor_type < 0)
@@ -302,6 +356,12 @@ int adsp_factory_register(unsigned int type,
 	int ret = 0;
 	char *dev_name;
 
+	if (type >= MSG_SENSOR_MAX)
+		return -EINVAL;
+
+	if (!adsp_factory_has_sensor(type))
+		return -EOPNOTSUPP;
+
 	switch (type) {
 	case MSG_ACCEL:
 		dev_name = "accelerometer_sensor";
@@ -358,6 +418,8 @@ int adsp_factory_register(unsigned int type,
 	data->sensor_attr[type] = attributes;
 	ret = sensors_register(&data->sensor_device[type], data,
 		data->sensor_attr[type], dev_name);
+	if (ret)
+		return ret;
 
 	data->sysfs_created[type] = true;
 	pr_info("[FACTORY] %s - type:%u ptr:%pK\n",
@@ -369,6 +431,9 @@ EXPORT_SYMBOL(adsp_factory_register);
 
 int adsp_factory_unregister(unsigned int type)
 {
+	if (type >= MSG_SENSOR_MAX)
+		return -EINVAL;
+
 	pr_info("[FACTORY] %s - type:%u ptr:%pK\n",
 		__func__, type, data->sensor_device[type]);
 
@@ -410,6 +475,9 @@ EXPORT_SYMBOL(get_accel_raw_data);
 int get_sub_accel_raw_data(int32_t *raw_data)
 {
 	uint8_t cnt = 0;
+
+	if (!adsp_factory_has_sensor(MSG_ACCEL_SUB))
+		return -EOPNOTSUPP;
 
 	adsp_unicast(NULL, 0, MSG_ACCEL_SUB, 0, MSG_TYPE_GET_RAW_DATA);
 
@@ -529,17 +597,21 @@ static int process_received_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 			sub_accel_factory_init_work(data);
 #endif
 #if IS_ENABLED(CONFIG_SUPPORT_DEVICE_MODE)
-		sns_device_mode_init_work();
-		sns_flip_init_work();
+		if (!adsp_factory_is_s23()) {
+			sns_device_mode_init_work();
+			sns_flip_init_work();
+		}
 #endif
 #if IS_ENABLED(CONFIG_LIGHT_FACTORY)
 		light_init_work(data);
 #endif
 #if IS_ENABLED(CONFIG_SUPPORT_LIGHT_CALIBRATION)
-		light_cal_init_work(data);
+		if (adsp_factory_is_flip())
+			light_cal_init_work(data);
 #endif
 #if IS_ENABLED(CONFIG_SUPPORT_PROX_CALIBRATION)
-		prox_cal_init_work(data);
+		if (adsp_factory_is_flip())
+			prox_cal_init_work(data);
 #endif
 #if IS_ENABLED(CONFIG_SUPPORT_PROX_POWER_ON_CAL)
 		prox_factory_init_work();
@@ -554,7 +626,8 @@ static int process_received_msg(struct sk_buff *skb, struct nlmsghdr *nlh)
 		light_seamless_init_work(data);
 #endif
 #if IS_ENABLED(CONFIG_LPS22HH_FACTORY) || IS_ENABLED(CONFIG_PRESSURE_FACTORY)
-		pressure_factory_init_work(data);
+		if (adsp_factory_has_sensor(MSG_PRESSURE))
+			pressure_factory_init_work(data);
 #endif
 		return 0;
 	}
@@ -692,8 +765,10 @@ static int __init factory_adsp_init(void)
 	prox_factory_init();
 #endif
 #if IS_ENABLED(CONFIG_SUPPORT_DUAL_6AXIS)
-	lsm6dso_sub_accel_factory_init();
-	lsm6dso_sub_gyro_factory_init();
+	if (adsp_factory_has_sensor(MSG_ACCEL_SUB)) {
+		lsm6dso_sub_accel_factory_init();
+		lsm6dso_sub_gyro_factory_init();
+	}
 #endif
 
 #if IS_ENABLED(CONFIG_SUPPORT_AK09973)
@@ -701,7 +776,8 @@ static int __init factory_adsp_init(void)
 #endif
 
 #if IS_ENABLED(CONFIG_FLIP_COVER_DETECTOR_FACTORY)
-	flip_cover_detector_factory_init();
+	if (adsp_factory_has_sensor(MSG_FLIP_COVER_DETECTOR))
+		flip_cover_detector_factory_init();
 #endif
 
 	pr_info("[FACTORY] %s: Timer Init\n", __func__);

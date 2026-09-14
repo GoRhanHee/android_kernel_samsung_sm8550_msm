@@ -48,6 +48,12 @@ static void press_get_device_id(struct adsp_data *data)
 	int32_t device_index = UNKNOWN_INDEX;
 	uint8_t cnt = 0, device_id = 0;
 
+	if (adsp_factory_is_s23()) {
+		strscpy(data->press_device_vendor, "STM", DEVICE_INFO_LENGTH);
+		strscpy(data->press_device_name, "LPS22HH", DEVICE_INFO_LENGTH);
+		return;
+	}
+
 	adsp_unicast(&cmd, sizeof(cmd), MSG_PRESSURE, 0, MSG_TYPE_OPTION_DEFINE);
 
 	while (!(data->ready_flag[MSG_TYPE_OPTION_DEFINE]

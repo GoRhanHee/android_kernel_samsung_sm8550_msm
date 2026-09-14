@@ -186,6 +186,10 @@ int get_accel_raw_data(int32_t *raw_data);
 #if IS_ENABLED(CONFIG_SUPPORT_DUAL_6AXIS)
 int get_sub_accel_raw_data(int32_t *raw_data);
 #endif
+bool adsp_factory_has_sensor(u16 sensor_type);
+bool adsp_factory_is_s23(void);
+bool adsp_factory_is_flip(void);
+const char *adsp_factory_imu_name(void);
 int adsp_get_sensor_data(int sensor_type);
 int adsp_factory_register(unsigned int type,
 	struct device_attribute *attributes[]);

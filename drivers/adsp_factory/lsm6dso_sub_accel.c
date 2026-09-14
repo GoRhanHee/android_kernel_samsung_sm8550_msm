@@ -16,11 +16,6 @@
 #include <linux/module.h>
 #include "adsp.h"
 #define VENDOR "STM"
-#if IS_ENABLED(CONFIG_LSM6DSV_FACTORY)
-#define CHIP_ID "LSM6DSVW"
-#else
-#define CHIP_ID "LSM6DSOW"
-#endif
 #define ACCEL_ST_TRY_CNT 3
 #define ACCEL_FACTORY_CAL_CNT 20
 #define ACCEL_RAW_DATA_CNT 3
@@ -51,7 +46,7 @@ static ssize_t sub_accel_vendor_show(struct device *dev,
 static ssize_t sub_accel_name_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%s\n", CHIP_ID);
+	return snprintf(buf, PAGE_SIZE, "%sW\n", adsp_factory_imu_name());
 }
 
 static ssize_t sensor_type_show(struct device *dev,

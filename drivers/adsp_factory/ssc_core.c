@@ -628,10 +628,9 @@ void ssc_flip_work_func(struct work_struct *work)
 	}
 	msg_buf[1] = (int32_t)curr_fstate;
 	pr_info("[FACTORY] %s: msg_buf = %d\n", __func__, msg_buf[1]);
-#if !defined(CONFIG_SEC_FACTORY) || !defined(CONFIG_SUPPORT_SENSOR_FLIP_MODEL)
-	adsp_unicast(msg_buf, sizeof(msg_buf),
+	if (!IS_ENABLED(CONFIG_SEC_FACTORY) || !adsp_factory_is_flip())
+		adsp_unicast(msg_buf, sizeof(msg_buf),
 			MSG_VIR_OPTIC, 0, MSG_TYPE_OPTION_DEFINE);
-#endif
 #else
 	msg_buf[0] = 11;
 	msg_buf[1] = (int32_t)curr_fstate;
@@ -643,6 +642,9 @@ void ssc_flip_work_func(struct work_struct *work)
 
 void sns_flip_init_work(void)
 {
+	if (adsp_factory_is_s23())
+		return;
+
 	pr_info("[FACTORY] sns_flip_init_work:%d \n", (int)curr_fstate);
 	queue_work(pdata_ssc_flip->ssc_flip_wq,
 		&pdata_ssc_flip->work_ssc_flip);
@@ -653,6 +655,9 @@ int sns_device_mode_notify(struct notifier_block *nb,
 	unsigned long flip_state, void *v)
 {
 	struct adsp_data *data = container_of(nb, struct adsp_data, adsp_nb);
+	if (adsp_factory_is_s23())
+		return 0;
+
 	hall_notifier = v;
 
 	if (strncmp(hall_notifier->name, FLIP_HALL_NAME, 4))
@@ -662,9 +667,8 @@ int sns_device_mode_notify(struct notifier_block *nb,
 		__func__, curr_fstate, data->fac_fstate);
 
 	curr_fstate = (int32_t)flip_state;
-#if !defined(CONFIG_SEC_FACTORY) || !defined(CONFIG_SUPPORT_SENSOR_FLIP_MODEL)
-	data->fac_fstate = curr_fstate;
-#endif
+	if (!IS_ENABLED(CONFIG_SEC_FACTORY) || !adsp_factory_is_flip())
+		data->fac_fstate = curr_fstate;
 	pr_info("[FACTORY] %s - after device mode curr:%d, fstate:%d",
 		__func__, curr_fstate, data->fac_fstate);
 
@@ -682,6 +686,9 @@ int sns_device_mode_notify(struct notifier_block *nb,
 
 void sns_device_mode_init_work(void)
 {
+	if (adsp_factory_is_s23())
+		return;
+
 	if(curr_fstate == 0)
 		adsp_unicast(NULL, 0, MSG_SSC_CORE, 0, MSG_TYPE_FACTORY_ENABLE);
 	else
@@ -696,6 +703,9 @@ static ssize_t fac_fstate_store(struct device *dev,
 	struct adsp_data *data = dev_get_drvdata(dev);
 	uint8_t cnt = 0;
 	int32_t fstate[2] = {VOPTIC_OP_CMD_FAC_FLIP, 0};
+
+	if (!adsp_factory_has_sensor(MSG_VIR_OPTIC))
+		return -EOPNOTSUPP;
 
 	mutex_lock(&data->vir_optic_factory_mutex);
 
@@ -821,6 +831,9 @@ static ssize_t probe_fail_reason_show(struct device *dev,
 static ssize_t update_ssc_flip_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t size)
 {
+	if (adsp_factory_is_s23())
+		return -EOPNOTSUPP;
+
 	pdata_ssc_flip->only_update = true;
 	queue_work(pdata_ssc_flip->ssc_flip_wq, &pdata_ssc_flip->work_ssc_flip);
 	pr_info("[FACTORY] %s", __func__);
@@ -832,8 +845,13 @@ static ssize_t update_ssc_flip_store(struct device *dev,
 static ssize_t support_dual_sensor_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	pr_info("[FACTORY] %s: %s\n", __func__, SUPPORT_DUAL_SENSOR);
-	return snprintf(buf, PAGE_SIZE, "%s\n", SUPPORT_DUAL_SENSOR);
+	const char *name = "SINGLE_GYRO";
+
+#if IS_ENABLED(CONFIG_SUPPORT_DUAL_6AXIS)
+	if (adsp_factory_has_sensor(MSG_GYRO_SUB))
+		name = "DUAL_GYRO";
+#endif
+	return snprintf(buf, PAGE_SIZE, "%s\n", name);
 }
 
 static ssize_t algo_lcd_onoff_store(struct device *dev,
@@ -1038,6 +1056,9 @@ EXPORT_SYMBOL(sensordump_notifier_call_chain);
 static void sensor_get_dhr_info(struct adsp_data *data, int sensor_num)
 {
 	int cnt = 0;
+
+	if (!adsp_factory_has_sensor(sensor_num))
+		return;
 
 	pr_info("[FACTORY] %s: %d\n", __func__, sensor_num);
 
