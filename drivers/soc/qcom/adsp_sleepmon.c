@@ -523,9 +523,21 @@ static void update_sysmon_event_stats_ptr(void *stats, size_t size)
 	}
 }
 
+static int adspsleepmon_smem_error(const void *stats)
+{
+	if (IS_ERR(stats)) {
+		/* Firmware may allocate statistics after announcing the channel. */
+		if (PTR_ERR(stats) == -ENOENT)
+			return -EPROBE_DEFER;
+		return PTR_ERR(stats);
+	}
+
+	return -EINVAL;
+}
+
 static int adspsleepmon_smem_init(void)
 {
-	size_t size;
+	size_t size = 0;
 	void *stats = NULL;
 
 	g_adspsleepmon.lpm_stats = qcom_smem_get(
@@ -537,7 +549,7 @@ static int adspsleepmon_smem_init(void)
 		(sizeof(struct sleep_stats) > size)) {
 		pr_err("Failed to get sleep stats from SMEM for ADSP: %d, size: %d\n",
 				PTR_ERR(g_adspsleepmon.lpm_stats), size);
-		return -ENOMEM;
+		return adspsleepmon_smem_error(g_adspsleepmon.lpm_stats);
 	}
 
 	g_adspsleepmon.lpi_stats = qcom_smem_get(
@@ -549,7 +561,7 @@ static int adspsleepmon_smem_init(void)
 		(sizeof(struct sleep_stats) > size)) {
 		pr_err("Failed to get LPI sleep stats from SMEM for ADSP: %d, size: %d\n",
 				PTR_ERR(g_adspsleepmon.lpi_stats), size);
-		return -ENOMEM;
+		return adspsleepmon_smem_error(g_adspsleepmon.lpi_stats);
 	}
 
 	g_adspsleepmon.dsppm_stats = qcom_smem_get(
@@ -561,7 +573,7 @@ static int adspsleepmon_smem_init(void)
 		(sizeof(struct dsppm_stats) > size)) {
 		pr_err("Failed to get DSPPM stats from SMEM for ADSP: %d, size: %d\n",
 				PTR_ERR(g_adspsleepmon.dsppm_stats), size);
-		return -ENOMEM;
+		return adspsleepmon_smem_error(g_adspsleepmon.dsppm_stats);
 	}
 
 	stats = qcom_smem_get(ADSPSLEEPMON_SMEM_ADSP_PID,
@@ -571,14 +583,14 @@ static int adspsleepmon_smem_init(void)
 	if (IS_ERR_OR_NULL(stats) || !size) {
 		pr_err("Failed to get SysMon stats from SMEM for ADSP: %d, size: %d\n",
 				PTR_ERR(stats), size);
-		return -ENOMEM;
+		return adspsleepmon_smem_error(stats);
 	}
 
 	update_sysmon_event_stats_ptr(stats, size);
 
 	if (IS_ERR_OR_NULL(g_adspsleepmon.sysmon_event_stats)) {
 		pr_err("Failed to get SysMon event stats from SMEM for ADSP\n");
-		return -ENOMEM;
+		return -EOPNOTSUPP;
 	}
 
 	/*
@@ -1793,8 +1805,14 @@ static const struct rpmsg_device_id sleepmon_rpmsg_match[] = {
 
 static int sleepmon_rpmsg_probe(struct rpmsg_device *dev)
 {
+	int ret;
+
 	/* Populate child nodes as platform devices */
 	of_platform_populate(dev->dev.of_node, NULL, NULL, &dev->dev);
+	ret = adspsleepmon_smem_init();
+	if (ret)
+		return ret;
+
 	g_adspsleepmon.rpmsgdev = dev;
 
 #if IS_ENABLED(CONFIG_QCOM_ADSP_SLEEPMON_RPROC_RESTART)
@@ -1812,7 +1830,7 @@ static int sleepmon_rpmsg_probe(struct rpmsg_device *dev)
 	}
 #endif
 
-	return adspsleepmon_smem_init();
+	return 0;
 }
 
 static void sleepmon_rpmsg_remove(struct rpmsg_device *dev)
