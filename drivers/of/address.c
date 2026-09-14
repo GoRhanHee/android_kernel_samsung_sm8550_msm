@@ -181,9 +181,11 @@ static int of_bus_pci_match(struct device_node *np)
 	 *
 	 * If none of the device_type match, and that the node name is
 	 * "pcie", accept the device as PCI (with a warning).
+	 * Qualcomm PCIe hosts may also omit device_type in stock trees.
 	 */
 	return of_node_is_type(np, "pci") || of_node_is_type(np, "pciex") ||
 		of_node_is_type(np, "vci") || of_node_is_type(np, "ht") ||
+		of_device_is_compatible(np, "qcom,pci-msm") ||
 		of_node_is_pcie(np);
 }
 
