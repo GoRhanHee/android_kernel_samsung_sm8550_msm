@@ -2051,6 +2051,16 @@ int sec_bat_parse_dt(struct device *dev,
 		pdata->full_condition_type, pdata->recharge_condition_type, pdata->full_check_type
 		);
 
+#if IS_ENABLED(CONFIG_DUAL_BATTERY)
+	/* Step charging needs this before parsing the sub-battery tables. */
+	if (sec_bat_dt_has_dual_battery()) {
+		ret = of_property_read_string(np,
+			"battery,dual_battery_name", (char const **)&pdata->dual_battery_name);
+		if (ret)
+			pr_info("%s: Dual battery name is Empty\n", __func__);
+	}
+#endif
+
 #if defined(CONFIG_STEP_CHARGING)
 	sec_step_charging_init(battery, dev);
 #endif
@@ -2076,12 +2086,7 @@ int sec_bat_parse_dt(struct device *dev,
 	}
 
 #if IS_ENABLED(CONFIG_DUAL_BATTERY)
-	if (sec_bat_dt_has_dual_battery()) {
-		ret = of_property_read_string(np,
-			"battery,dual_battery_name", (char const **)&pdata->dual_battery_name);
-		if (ret)
-			pr_info("%s: Dual battery name is Empty\n", __func__);
-
+	if (sec_bat_has_dual_battery(pdata)) {
 		np = of_find_node_by_name(NULL, "sec-dual-battery");
 		if (!np) {
 			pr_info("%s: np NULL\n", __func__);
