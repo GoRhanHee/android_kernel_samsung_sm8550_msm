@@ -2298,7 +2298,11 @@ void sec_bat_parse_mode_dt(struct sec_battery_info *battery)
 		return;
 	}
 
+#if IS_ENABLED(CONFIG_AOSP)
+	if (battery->store_mode || !battery->charging_enabled) {
+#else
 	if (battery->store_mode) {
+#endif
 		ret = of_property_read_u32(np, "battery,store_mode_max_input_power",
 			&pdata->store_mode_max_input_power);
 		if (ret) {

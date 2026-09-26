@@ -11,6 +11,10 @@
  */
 #include "sec_battery.h"
 #include "sec_battery_sysfs.h"
+#if IS_ENABLED(CONFIG_AOSP)
+#include <linux/sysfs.h>
+#include <linux/uidgid.h>
+#endif
 #if IS_ENABLED(CONFIG_SEC_ABC)
 #include <linux/sti/abc_common.h>
 #endif
@@ -51,6 +55,9 @@ static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(blkt_temp_adc),
 	SEC_BATTERY_ATTR(batt_vf_adc),
 	SEC_BATTERY_ATTR(batt_slate_mode),
+#if IS_ENABLED(CONFIG_AOSP)
+	SEC_BATTERY_ATTR(charging_enabled),
+#endif
 
 	SEC_BATTERY_ATTR(batt_lp_charging),
 	SEC_BATTERY_ATTR(siop_activated),
@@ -511,6 +518,12 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
 			is_slate_mode(battery));
 		break;
+#if IS_ENABLED(CONFIG_AOSP)
+	case CHARGING_ENABLED:
+		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
+			battery->charging_enabled);
+		break;
+#endif
 
 	case BATT_LP_CHARGING:
 		if (sec_bat_get_lpmode())
@@ -2189,6 +2202,21 @@ ssize_t sec_bat_store_attrs(
 			ret = count;
 		}
 		break;
+#if IS_ENABLED(CONFIG_AOSP)
+	case CHARGING_ENABLED:
+		if (sscanf(buf, "%10d\n", &x) == 1) {
+			battery->charging_enabled = !!x;
+			if (!battery->charging_enabled)
+				battery->charging_suspended = true;
+			__pm_stay_awake(battery->parse_mode_dt_ws);
+			queue_delayed_work(battery->monitor_wqueue,
+					&battery->parse_mode_dt_work, 0);
+			queue_delayed_work(battery->monitor_wqueue,
+					&battery->monitor_work, 0);
+			ret = count;
+		}
+		break;
+#endif
 	case BATT_LP_CHARGING:
 		break;
 	case SIOP_ACTIVATED:
@@ -2609,7 +2637,11 @@ ssize_t sec_bat_store_attrs(
 		if (sscanf(buf, "%10d\n", &x) == 1) {
 			dev_err(battery->dev,
 					"%s: BATT_CAPACITY_MAX(%d), fg_reset(%d)\n", __func__, x, sec_bat_get_fgreset());
-			if (!sec_bat_get_fgreset() && !battery->store_mode) {
+			if (!sec_bat_get_fgreset() && !battery->store_mode
+#if IS_ENABLED(CONFIG_AOSP)
+			    && battery->charging_enabled
+#endif
+			) {
 				value.intval = x;
 				psy_do_property(battery->pdata->fuelgauge_name, set,
 						POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN, value);
@@ -4268,6 +4300,13 @@ int sec_bat_create_attrs(struct device *dev)
 		if (rc)
 			goto create_attrs_failed;
 	}
+#if IS_ENABLED(CONFIG_AOSP)
+	/* The Lineage health service runs as system and probes for R_OK | W_OK. */
+	rc = sysfs_file_change_owner(&dev->kobj, "charging_enabled",
+				     KUIDT_INIT(1000), KGIDT_INIT(1000));
+	if (rc)
+		goto create_attrs_failed;
+#endif
 	goto create_attrs_succeed;
 
 create_attrs_failed:

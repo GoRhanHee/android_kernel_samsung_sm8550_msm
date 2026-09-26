@@ -46,6 +46,17 @@
 #include <linux/vbus_notifier.h>
 #endif
 
+static inline bool sec_bat_charging_control_enabled(
+		const struct sec_battery_info *battery)
+{
+#if IS_ENABLED(CONFIG_AOSP)
+	return battery->charging_enabled;
+#else
+	(void)battery;
+	return true;
+#endif
+}
+
 static unsigned int __read_mostly lpcharge;
 module_param(lpcharge, uint, 0444);
 static int __read_mostly fg_reset;
@@ -1028,6 +1039,7 @@ __visible_for_testing bool sec_bat_change_vbus(struct sec_battery_info *battery,
 
 	if (battery->pdata->chg_thm_info.check_type == SEC_BATTERY_TEMP_CHECK_NONE ||
 			battery->store_mode ||
+			!sec_bat_charging_control_enabled(battery) ||
 			((battery->siop_level == 80) && is_wired_type(battery->cable_type)))
 		return false;
 	if (!sec_bat_change_vbus_condition(ct, evt))
@@ -1760,7 +1772,8 @@ void sec_bat_set_charging_status(struct sec_battery_info *battery, int status)
 
 		} else if ((battery->status == POWER_SUPPLY_STATUS_FULL ||
 			(battery->capacity == 100 && !is_slate_mode(battery))) &&
-			!battery->store_mode) {
+			!battery->store_mode &&
+			sec_bat_charging_control_enabled(battery)) {
 
 			pr_info("%s : Update fg scale to 101%%\n", __func__);
 			value.intval = 100;
@@ -4034,6 +4047,33 @@ static void sec_bat_check_store_mode(struct sec_battery_info *battery)
 
 	if (sec_bat_get_facmode())
 		return;
+#if IS_ENABLED(CONFIG_AOSP)
+	if (!is_nocharge_type(battery->cable_type) &&
+	    !battery->charging_enabled) {
+		int chg_mode = SEC_BAT_CHG_MODE_CHARGING_OFF;
+
+		if (battery->capacity > battery->pdata->store_mode_charging_max ||
+		    battery->pdata->store_mode_buckoff)
+			chg_mode = SEC_BAT_CHG_MODE_BUCK_OFF;
+#if IS_ENABLED(CONFIG_USB_FACTORY_MODE)
+		if ((sec_bat_get_facmode() || battery->batt_f_mode != NO_MODE) &&
+		    chg_mode == SEC_BAT_CHG_MODE_BUCK_OFF)
+#else
+		if (sec_bat_get_facmode() &&
+		    chg_mode == SEC_BAT_CHG_MODE_BUCK_OFF)
+#endif
+			chg_mode = SEC_BAT_CHG_MODE_CHARGING_OFF;
+		sec_bat_set_charging_status(battery,
+					    POWER_SUPPLY_STATUS_DISCHARGING);
+		sec_bat_set_charge(battery, chg_mode);
+		if (battery->capacity <= 5 &&
+		    battery->status == POWER_SUPPLY_STATUS_DISCHARGING) {
+			sec_bat_set_charging_status(battery,
+						    POWER_SUPPLY_STATUS_CHARGING);
+			sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING);
+		}
+	}
+#endif
 #if defined(CONFIG_SEC_FACTORY)
 	if (!is_nocharge_type(battery->cable_type)) {
 #else
@@ -4084,6 +4124,16 @@ static void sec_bat_check_store_mode(struct sec_battery_info *battery)
 			sec_vote(battery->chgen_vote, VOTER_STORE_MODE, false, 0);
 		}
 	}
+#if IS_ENABLED(CONFIG_AOSP)
+	if (!is_nocharge_type(battery->cable_type) &&
+	    battery->charging_suspended && battery->charging_enabled &&
+	    !battery->store_mode) {
+		sec_bat_set_charging_status(battery,
+					    POWER_SUPPLY_STATUS_CHARGING);
+		sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING);
+		battery->charging_suspended = false;
+	}
+#endif
 }
 
 #if IS_ENABLED(CONFIG_DIRECT_CHARGING)
@@ -7214,7 +7264,8 @@ __visible_for_testing void sec_bat_set_rp_current(struct sec_battery_info *batte
 			icl = battery->pdata->default_input_current;
 			fcc = battery->pdata->default_charging_current;
 		} else {
-			if (battery->store_mode) {
+			if (battery->store_mode ||
+			    !sec_bat_charging_control_enabled(battery)) {
 				icl = battery->pdata->rp_current_rdu_rp3;
 				fcc = battery->pdata->max_charging_current;
 			} else {
@@ -8807,6 +8858,9 @@ static int sec_battery_probe(struct platform_device *pdev)
 	battery->factory_mode = false;
 	battery->display_test = false;
 	battery->store_mode = false;
+#if IS_ENABLED(CONFIG_AOSP)
+	battery->charging_enabled = true;
+#endif
 	battery->prev_usb_conf = USB_CURRENT_NONE;
 	battery->is_hc_usb = false;
 	battery->is_sysovlo = false;

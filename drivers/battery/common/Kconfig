@@ -9,6 +9,13 @@ config DIRECT_CHARGING
 
 menu "Samsung Battery Common drivers"
 
+config AOSP
+	bool "AOSP ROM compatibility"
+	default n
+	help
+	  Enable AOSP-specific Samsung battery interfaces. Leave disabled for
+	  OneUI builds.
+
 config BATTERY_SAMSUNG
 	tristate "samsung battery driver"
 	help

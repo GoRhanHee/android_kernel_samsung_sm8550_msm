@@ -1146,6 +1146,11 @@ struct sec_battery_info {
 	bool vbat_adc_open;
 #endif
 
+#if IS_ENABLED(CONFIG_AOSP)
+	bool charging_enabled;
+	bool charging_suspended;
+#endif
+
 	/* usb suspend */
 	int prev_usb_conf;
 
