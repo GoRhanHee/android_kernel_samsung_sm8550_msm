@@ -1113,7 +1113,7 @@ static int adsp_init_regulator(struct qcom_adsp *adsp)
 	int len;
 	int i, rc;
 	char uv_ua[50];
-#if IS_ENABLED(CONFIG_AOSP)
+#if IS_ENABLED(CONFIG_SEC_SENSORS_SSC)
 	char supply_prop[50];
 #endif
 	u32 uv_ua_vals[2];
@@ -1138,8 +1138,8 @@ static int adsp_init_regulator(struct qcom_adsp *adsp)
 
 		adsp->regs[i].reg = devm_regulator_get(adsp->dev, reg_name);
 		if (IS_ERR(adsp->regs[i].reg)) {
-#if IS_ENABLED(CONFIG_AOSP)
 			rc = PTR_ERR(adsp->regs[i].reg);
+#if IS_ENABLED(CONFIG_AOSP)
 			/* Wait for the sensor PMIC instead of booting ADSP without it. */
 			if (rc == -EPROBE_DEFER)
 				return dev_err_probe(adsp->dev, rc,
@@ -1149,7 +1149,6 @@ static int adsp_init_regulator(struct qcom_adsp *adsp)
 			if (!strcmp(reg_name, SENSOR_SUPPLY_NAME) ||
 				!strcmp(reg_name, SUBSENSOR_SUPPLY_NAME) ||
 				!strcmp(reg_name, PROX_VDD_NAME)) {
-#if IS_ENABLED(CONFIG_AOSP)
 				snprintf(supply_prop, sizeof(supply_prop),
 					 "%s-supply", reg_name);
 				if (of_find_property(adsp->dev->of_node,
@@ -1157,14 +1156,13 @@ static int adsp_init_regulator(struct qcom_adsp *adsp)
 					return dev_err_probe(adsp->dev, rc,
 							     "failed to get %s reg\n",
 							     reg_name);
-#endif
 				dev_info(adsp->dev, "%s ignore %s %d\n",
 					__func__, reg_name, adsp->reg_cnt--);
 				return 0;
 			}
 #endif
 			dev_err(adsp->dev, "failed to get %s reg\n", reg_name);
-			return PTR_ERR(adsp->regs[i].reg);
+			return rc;
 		}
 
 		/* Read current(uA) and voltage(uV) value */
