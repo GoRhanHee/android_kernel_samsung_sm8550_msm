@@ -3782,7 +3782,7 @@ static void msm_dwc3_perf_vote_enable(struct dwc3_msm *mdwc, bool enable);
 static void configure_usb_wakeup_interrupt(struct dwc3_msm *mdwc,
 	struct usb_irq *uirq, unsigned int polarity, bool enable)
 {
-	if (uirq && enable && !uirq->enable) {
+	if (uirq && uirq->irq && enable && !uirq->enable) {
 		dbg_event(0xFF, "PDC_IRQ_EN", uirq->irq);
 		dbg_event(0xFF, "PDC_IRQ_POL", polarity);
 		/* clear any pending interrupt */
@@ -3793,7 +3793,7 @@ static void configure_usb_wakeup_interrupt(struct dwc3_msm *mdwc,
 		uirq->enable = true;
 	}
 
-	if (uirq && !enable && uirq->enable) {
+	if (uirq && uirq->irq && !enable && uirq->enable) {
 		dbg_event(0xFF, "PDC_IRQ_DIS", uirq->irq);
 		disable_irq_wake(uirq->irq);
 		disable_irq_nosync(uirq->irq);
@@ -6425,9 +6425,8 @@ static int dwc3_msm_smmu_fault_handler(struct iommu_domain *domain, struct devic
 
 static int dwc3_msm_interconnect_vote_populate(struct dwc3_msm *mdwc)
 {
-	int ret_nom = 0, i = 0, j = 0, count = 0;
-	int ret_svs = 0, ret = 0;
-	u32 *vv_nom, *vv_svs;
+	int i = 0, j = 0, count = 0, ret = 0;
+	u32 *vv_nom = NULL, *vv_svs = NULL;
 
 	count = of_property_count_strings(mdwc->dev->of_node,
 						"interconnect-names");
@@ -6438,29 +6437,31 @@ static int dwc3_msm_interconnect_vote_populate(struct dwc3_msm *mdwc)
 
 	/* 2 signifies the two types of values avg & peak */
 	vv_nom = kzalloc(count * 2 * sizeof(*vv_nom), GFP_KERNEL);
-	if (!vv_nom)
-		return -ENOMEM;
-
-	vv_svs = kzalloc(count * 2 * sizeof(*vv_svs), GFP_KERNEL);
-	if (!vv_svs)
-		return -ENOMEM;
-
-	/* of_property_read_u32_array returns 0 on success */
-	ret_nom = of_property_read_u32_array(mdwc->dev->of_node,
-				"qcom,interconnect-values-nom",
-					vv_nom, count * 2);
-	if (ret_nom) {
-		dev_err(mdwc->dev, "Nominal values not found.\n");
-		ret = ret_nom;
+	if (!vv_nom) {
+		ret = -ENOMEM;
 		goto icc_err;
 	}
 
-	ret_svs = of_property_read_u32_array(mdwc->dev->of_node,
+	vv_svs = kzalloc(count * 2 * sizeof(*vv_svs), GFP_KERNEL);
+	if (!vv_svs) {
+		ret = -ENOMEM;
+		goto icc_err;
+	}
+
+	/* of_property_read_u32_array returns 0 on success */
+	ret = of_property_read_u32_array(mdwc->dev->of_node,
+				"qcom,interconnect-values-nom",
+					vv_nom, count * 2);
+	if (ret) {
+		dev_err(mdwc->dev, "Nominal values not found.\n");
+		goto icc_err;
+	}
+
+	ret = of_property_read_u32_array(mdwc->dev->of_node,
 				"qcom,interconnect-values-svs",
 					vv_svs, count * 2);
-	if (ret_svs) {
+	if (ret) {
 		dev_err(mdwc->dev, "Svs values not found.\n");
-		ret = ret_svs;
 		goto icc_err;
 	}
 
